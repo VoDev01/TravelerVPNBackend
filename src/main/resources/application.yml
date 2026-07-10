@@ -1,0 +1,6 @@
+spring:
+  cassandra:
+    keyspace-name: vpn_keyspace
+    contact-points: cassandra
+    local-datacenter: datacenter1
+    schema-action: create_if_not_exists

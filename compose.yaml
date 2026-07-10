@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  cassandra:
+    image: cassandra:latest
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=VpnCluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_ENDPOINT_SNITCH=SimpleSnitch
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    command: ["cassandra", "-f"]
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: on-failure
+    networks:
+      - vpn_network
+
+  vpn-backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_CASSANDRA_CONTACT_POINTS=cassandra:9042
+      - SPRING_CASSANDRA_LOCAL_DATACENTER=datacenter1
+      - SPRING_CASSANDRA_KEYSPACE_NAME=vpn_keyspace
+      - SPRING_CASSANDRA_SCHEMA_ACTION=create_if_not_exists
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    networks:
+      - vpn_network
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+        - action: rebuild
+          path: ./build.gradle.kts
+
+volumes:
+  cassandra_data:
+
+networks:
+  vpn_network:
+    driver: bridge
+
