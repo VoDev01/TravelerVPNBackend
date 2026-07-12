@@ -1,0 +1,52 @@
+services:
+  cassandra:
+    environment:
+      - CASSANDRA_USER=dev
+      - CASSANDRA_PASSWORD=dev
+      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
+
+  vpn-backend:
+    build:
+      context: .
+      dockerfile: docker/backend/dev/Dockerfile
+    environment:
+      SPRING_CASSANDRA_USERNAME: dev
+      SPRING_CASSANDRA_PASSWORD: dev
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    entrypoint: [
+      "/bin/sh",
+      "-c",
+      "until [ -f /shared-data/vault.env ]; do echo 'Ожидание файла токена...'; sleep 1; done; export $(cat /shared-data/vault.env | xargs) && exec ./gradlew -t bootRun"
+    ]
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./build.gradle.kts
+          target: /app/build.gradle.kts
+    volumes:
+      - token-share:/shared-data
+    restart: on-failure
+
+  vault:
+    environment:
+      VAULT_TOKEN: "root-dev-token"
+      VAULT_DEV_ROOT_TOKEN_ID: "root-dev-token"
+      VAULT_ADDR: "http://0.0.0.0:8200"
+    command: [
+      "/bin/sh",
+      "-c",
+      "token.sh & sleep 1 && exec vault server -dev"
+    ]
+    volumes:
+      - ./docker/vault/token-dev.sh:/usr/local/bin/token.sh
+      - token-share:/shared-data
+
+volumes:
+  token-share:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

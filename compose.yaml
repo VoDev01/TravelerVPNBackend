@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   cassandra:
     image: cassandra:latest
@@ -11,43 +9,58 @@ services:
       - CASSANDRA_ENDPOINT_SNITCH=SimpleSnitch
     volumes:
       - cassandra_data:/var/lib/cassandra
-    command: ["cassandra", "-f"]
+      - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
+    command: ["/bin/bash", "-c", "init.sh & /usr/local/bin/docker-entrypoint.sh cassandra -f"]
     healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
-      interval: 10s
+      test: [ "CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     restart: on-failure
     networks:
       - vpn_network
 
   vpn-backend:
-    build:
-      context: .
-      dockerfile: docker/backend/Dockerfile
+    image: traveler_vpn:latest
     ports:
       - "8080:8080"
     environment:
       - SPRING_CASSANDRA_CONTACT_POINTS=cassandra:9042
       - SPRING_CASSANDRA_LOCAL_DATACENTER=datacenter1
-      - SPRING_CASSANDRA_KEYSPACE_NAME=vpn_keyspace
+      - SPRING_CASSANDRA_KEYSPACE_NAME=traveler_vpn
       - SPRING_CASSANDRA_SCHEMA_ACTION=create_if_not_exists
     depends_on:
       cassandra:
         condition: service_healthy
+      vault:
+        condition: service_healthy
     networks:
       - vpn_network
-    develop:
-      watch:
-        - action: rebuild
-          path: ./src
-        - action: rebuild
-          path: ./build.gradle.kts
+
+  vault:
+    build:
+      context: .
+      dockerfile: docker/vault/Dockerfile
+    networks:
+      - vpn_network
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault-data:/vault/data
+      - ./docker/vault/config.hcl:/vault/config.hcl
+      - ./docker/vault/token-dev.sh:/usr/local/bin/token-dev.sh
+    restart: on-failure
+    healthcheck:
+        test: [ "CMD", "sh", "-c", "VAULT_ADDR=http://127.0.0.1:8200 vault status" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 10s
 
 volumes:
   cassandra_data:
+  vault-data:
 
 networks:
   vpn_network:
     driver: bridge
-

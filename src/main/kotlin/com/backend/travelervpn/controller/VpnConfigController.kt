@@ -3,11 +3,13 @@ package com.backend.travelervpn.controller
 import com.backend.travelervpn.entity.VpnUser
 import com.backend.travelervpn.repository.VpnUserRepository
 import com.backend.travelervpn.service.SingBoxManagerService
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
+import kotlin.jvm.optionals.getOrNull
 
 data class VpnConfigResponse(val status: String, val uuid: String, val configUrl: String)
 
@@ -19,7 +21,8 @@ class VpnConfigController(
 ) {
     private val oracleServerIp = "143.244.11.22"
     private val serverPort = 443
-    private val realityPublicKey = "Y2hvb29zZV9hX3JlYWxfcHVibGljX2tleV9mcm9tX3NpbmdfYm94"
+    @Value("\${realityPublicKey:teetste}")
+    private lateinit var realityPublicKey: String
     private val realityShortId = "0123456789abcdef"
     private val maskDomain = "://microsoft.com"
 
@@ -27,7 +30,7 @@ class VpnConfigController(
     suspend fun generateClientConfig(@RequestParam(required = false) userId: String?): VpnConfigResponse {
 
         if (userId != null) {
-            val existingUser = vpnUserRepository.findById(userId)
+            val existingUser = vpnUserRepository.findById(userId).getOrNull()
 
             if (existingUser != null) {
                 return VpnConfigResponse("success", existingUser.clientUuid, existingUser.configUrl)
