@@ -38,3 +38,6 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+docker/vault/init-vault.sh
+compose.prod.yaml
