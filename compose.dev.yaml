@@ -1,52 +1,70 @@
 services:
   cassandra:
     environment:
-      - CASSANDRA_USER=dev
-      - CASSANDRA_PASSWORD=dev
-      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
+      CASSANDRA_PASSWORD_SEEDER: "yes"
+      CASSANDRA_USER: "dev"
+      CASSANDRA_PASSWORD: "dev"
+      CASSANDRA_AUTHENTICATOR: "PasswordAuthenticator"
+    ports:
+      - "9042:9042"
+    networks:
+      - vpn_network
 
   vpn-backend:
+    ports:
+      - "8080:8080"
     build:
       context: .
       dockerfile: docker/backend/dev/Dockerfile
     environment:
-      SPRING_CASSANDRA_USERNAME: dev
-      SPRING_CASSANDRA_PASSWORD: dev
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
-    entrypoint: [
-      "/bin/sh",
-      "-c",
-      "until [ -f /shared-data/vault.env ]; do echo 'Ожидание файла токена...'; sleep 1; done; export $(cat /shared-data/vault.env | xargs) && exec ./gradlew -t bootRun"
-    ]
+    entrypoint: ["init.sh"]
+    command: ["./gradlew", "bootRun"]
     develop:
       watch:
-        - action: sync
+        - action: sync+restart
           path: ./src
           target: /app/src
-        - action: sync
+        - action: sync+restart
           path: ./build.gradle.kts
           target: /app/build.gradle.kts
     volumes:
-      - token-share:/shared-data
+      - vault-shared:/vault/secrets/
+      - ./docker/backend/init.sh:/usr/local/bin/init.sh
     restart: on-failure
+    networks:
+      - vpn_network
 
   vault:
+    networks:
+      - vpn_network
+    ports:
+      - "8200:8200"
     environment:
-      VAULT_TOKEN: "root-dev-token"
-      VAULT_DEV_ROOT_TOKEN_ID: "root-dev-token"
-      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_SPRING_ROLE_ID: dev-id
+      VAULT_TOKEN: "root"
+      VAULT_DEV_ROOT_TOKEN_ID: "root"
+      VAULT_UI: "true"
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      API_ADDR: "http://127.0.0.1:8200"
     command: [
       "/bin/sh",
       "-c",
-      "token.sh & sleep 1 && exec vault server -dev"
+      "init-vault.sh & exec vault server -dev -dev-listen-address=0.0.0.0:8200"
     ]
     volumes:
-      - ./docker/vault/token-dev.sh:/usr/local/bin/token.sh
-      - token-share:/shared-data
+      - ./docker/vault/init-vault.sh:/usr/local/bin/init-vault.sh
 
-volumes:
-  token-share:
-    driver: local
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
+  vault-agent:
+    environment:
+      VAULT_ROLE_ID: dev-id
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+    networks:
+      - vpn_network
+    volumes:
+      - vault-shared:/vault/secrets
+
+networks:
+  vpn_network:
+    driver: bridge
