@@ -1,0 +1,11 @@
+name: sing-box
+services:
+  sing-box:
+    ports:
+      - "443:443/tcp"
+    image: ghcr.io/sagernet/sing-box
+    container_name: sing-box
+    restart: always
+    volumes:
+      - ./config.json:/etc/sing-box/config.json
+    command: -D /var/lib/sing-box -C /etc/sing-box/ run

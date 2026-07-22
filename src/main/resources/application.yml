@@ -3,6 +3,8 @@ spring:
   realityShortId: ${realityShortId}
   serverIp: ${serverIp}
   maskDomain: ${maskDomain}
+  marzbanUsername: ${marzbanUsername}
+  marzbanPassword: ${marzbanPassword}
 
   config:
     import: "vault://"
@@ -10,6 +12,7 @@ spring:
   cassandra:
     username: ${spring.cassandraUser}
     password: ${spring.cassandraPassword}
+    schema-action: recreate-drop-unused
 
   cloud:
     vault:

@@ -18,4 +18,8 @@ class AppProperties {
     @NotNull
     lateinit var maskDomain: String
     var serverPort = 443
+    @NotNull
+    lateinit var marzbanUsername: String
+    @NotNull
+    lateinit var marzbanPassword: String
 }
