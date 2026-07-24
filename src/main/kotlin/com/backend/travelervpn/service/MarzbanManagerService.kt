@@ -61,7 +61,7 @@ class MarzbanManagerService(
 
         val request = UserCreate(
             username = username,
-            status = UserStatus.ACTIVE,
+            status = UserStatus.DISABLED,
             inbounds = Inbounds(
                 vless = listOf("VLESS TCP REALITY")
             ),

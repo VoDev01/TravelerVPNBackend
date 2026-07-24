@@ -32,7 +32,7 @@ class VpnController(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @PostMapping("/vpn/connect")
-    suspend fun connect(@RequestParam(required = false) userId: String?) {
+    suspend fun connect(userId: String) {
         //TODO: Implement connection to a marzban node
     }
 
