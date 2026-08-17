@@ -22,4 +22,12 @@ class AppProperties {
     lateinit var marzbanUsername: String
     @NotNull
     lateinit var marzbanPassword: String
+    @NotNull
+    lateinit var xuiToken: String
+    @NotNull
+    lateinit var xuiSecretPath: String
+    @NotNull
+    lateinit var xuiUsername: String
+    @NotNull
+    lateinit var xuiPassword: String
 }

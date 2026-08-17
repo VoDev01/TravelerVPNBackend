@@ -5,6 +5,10 @@ spring:
   maskDomain: ${maskDomain}
   marzbanUsername: ${marzbanUsername}
   marzbanPassword: ${marzbanPassword}
+  xuiToken: ${xuiToken}
+  xuiSecretPath: ${xuiSecretPath}
+  xuiUsername: ${xuiUsername}
+  xuiPassword: ${xuiPassword}
 
   config:
     import: "vault://"

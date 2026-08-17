@@ -1,3 +1,5 @@
+name: travelervpn-dev
+
 services:
   cassandra:
     environment:
@@ -45,15 +47,9 @@ services:
       - "8200:8200"
     restart: always
     environment:
-      VAULT_SPRING_ROLE_ID: dev-id
-      VAULT_TOKEN: "root"
-      VAULT_DEV_ROOT_TOKEN_ID: "root"
       VAULT_ADDR: "http://127.0.0.1:8200"
       API_ADDR: "http://127.0.0.1:8200"
-      CASSANDRA_USER: "dev"
-      CASSANDRA_PASSWORD: "dev"
-      MARZBAN_USERNAME: "vodev"
-      MARZBAN_PASSWORD: "SAmsuNG123vodev"
+      VAULT_DEV_ROOT_TOKEN_ID: "root"
     command: [
       "/bin/sh",
       "-c",
@@ -61,18 +57,24 @@ services:
     ]
     volumes:
       - ./docker/vault/init-vault.sh:/usr/local/bin/init-vault.sh
+    secrets:
+      - vault_secrets
 
   vault-agent:
     environment:
-      VAULT_ROLE_ID: dev-id
-      VAULT_ADDR: http://vault:8200
-      VAULT_TOKEN: root
+      VAULT_ADDR: "http://vault:8200"
     networks:
       - vpn_network
     volumes:
       - vault-shared:/vault/secrets
+    secrets:
+      - vault_secrets
     restart: always
 
 networks:
   vpn_network:
     driver: bridge
+
+secrets:
+  vault_secrets:
+    file: ./.secrets

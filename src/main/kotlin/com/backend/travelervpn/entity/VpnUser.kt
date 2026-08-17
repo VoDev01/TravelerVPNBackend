@@ -26,5 +26,9 @@ data class VpnUser(
     @Column("status")
     val status: UserStatus = UserStatus.ACTIVE,
     @Column("last_payment_at")
-    val lastPaymentAt: Instant? = null
+    val lastPaymentAt: Instant? = null,
+    @Column("expiry_at")
+    val expiryAt: Instant? = null,
+    @Column("traffic_left")
+    val trafficLeft: Long? = null
 )

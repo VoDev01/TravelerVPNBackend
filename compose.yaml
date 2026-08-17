@@ -10,11 +10,11 @@ services:
       - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
     command: ["/bin/sh", "-c", "init.sh & docker-entrypoint.sh cassandra -f"]
     healthcheck:
-      test: [ "CMD", "cqlsh", "-e", "describe keyspaces" ]
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       interval: 15s
       timeout: 5s
       retries: 10
-    restart: on-failure
+    restart: always
 
   vpn-backend:
     image: traveler_vpn:latest
@@ -28,6 +28,7 @@ services:
         condition: service_healthy
       vault-agent:
         condition: service_healthy
+    restart: always
 
   vault:
     image: hashicorp/vault:2.0.3
@@ -37,13 +38,13 @@ services:
       - ./docker/vault/init-vault.sh:/usr/local/bin/init-vault.sh
     secrets:
       - spring-app-policy
-    restart: on-failure
+    restart: always
     healthcheck:
-        test: [ "CMD", "sh", "-c", "vault status" ]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-        start_period: 10s
+      test: ["CMD", "sh", "-c", "vault status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   vault-agent-init:
     image: alpine:latest
@@ -64,11 +65,11 @@ services:
         condition: "service_healthy"
       vault-agent-init:
         condition: "service_completed_successfully"
-    command: ["/bin/sh", "-c", "init.sh & 
-    vault agent -config=/vault/agent-config.hcl"]
-    restart: on-failure
+    command:
+      ["/bin/sh", "-c", "init.sh & vault agent -config=/vault/agent-config.hcl"]
+    restart: always
     healthcheck:
-      test: [ "CMD", "sh", "-c", "test -s /vault/secrets/vault-token" ]
+      test: ["CMD", "sh", "-c", "test -s /vault/secrets/vault-token"]
       interval: 5s
       timeout: 3s
       retries: 5

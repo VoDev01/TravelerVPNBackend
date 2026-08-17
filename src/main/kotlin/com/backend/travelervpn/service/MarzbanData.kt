@@ -3,7 +3,6 @@ package com.backend.travelervpn.service
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonValue
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 
 data class Token(
     val access_token: String,
@@ -25,7 +24,7 @@ data class UserCreate(
     val data_limit: Long? = 0,
     val data_limit_reset_strategy: String = "no_reset",
     val expire: Long? = 0,
-    val inbounds: Inbounds,
+    val inbounds: MarzbanInbounds,
     val proxies: Proxies,
     val next_plan: NextPlan? = NextPlan(),
     val note: String? = "",
@@ -61,7 +60,7 @@ data class UserResponse(
     val on_hold_timeout: String? = null,
     val auto_delete_in_days: Int? = null,
 
-    val inbounds: Inbounds? = null,
+    val inbounds: MarzbanInbounds? = null,
     val proxies: Proxies? = null,
     val next_plan: NextPlan? = null,
     val links: List<String> = emptyList(),
@@ -76,7 +75,7 @@ data class UserModify(
     val expire: Long? = null,
     val data_limit: Long? = null,
     val data_limit_reset_strategy: String? = null,
-    val inbounds: Inbounds? = null,
+    val inbounds: MarzbanInbounds? = null,
     val note: String? = null,
     val status: UserStatus? = null,
 
@@ -98,7 +97,7 @@ data class NextPlanModify(
 )
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-data class Inbounds(
+data class MarzbanInbounds(
     val vless: List<String>,
     val vmess: List<String> = emptyList()
 )

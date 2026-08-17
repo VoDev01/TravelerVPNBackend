@@ -40,3 +40,5 @@ out/
 .kotlin
 
 compose.prod.yaml
+.secrets
+.terraformrc

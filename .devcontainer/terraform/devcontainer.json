@@ -1,0 +1,30 @@
+{
+	"name": "Terraform",
+	"dockerFile": "Dockerfile",
+	"mounts": [
+		{
+			"source": "${localWorkspaceFolder}/.terraformrc",
+			"target": "/root/.terraformrc",
+			"type": "bind"
+		}
+	],
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"editor.formatOnPaste": false,
+				"editor.formatOnType": false,
+				"editor.formatOnSave": true,
+				"editor.formatOnSaveMode": "file",
+				"files.autoSave": "off"
+			},
+			"extensions": [
+				"hashicorp.terraform",
+				"hashicorp.hcl",
+				"4ops.terraform",
+				"redhat.vscode-yaml"
+			]
+		}
+	},
+	"remoteUser": "root",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+}
