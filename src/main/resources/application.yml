@@ -14,9 +14,21 @@ spring:
     import: "vault://"
 
   cassandra:
-    username: ${spring.cassandraUser}
-    password: ${spring.cassandraPassword}
-    schema-action: recreate-drop-unused
+    username: ${cassandraUser}
+    password: ${cassandraPassword}
+    schema-action: create_if_not_exists
+    keyspace-name: traveler_vpn
+    local-datacenter: datacenter1
+    contact-points: cassandra:9042
+
+  flyway:
+    url: jdbc:cassandra://cassandra:9042/traveler_vpn?localdatacenter=datacenter1
+    user: ${cassandraUser}
+    password: ${cassandraPassword}
+    locations: classpath:cassandra/migration
+    driver-class-name: com.ing.data.cassandra.jdbc.CassandraDriver
+    baseline-on-migrate: true
+    group: true
 
   cloud:
     vault:

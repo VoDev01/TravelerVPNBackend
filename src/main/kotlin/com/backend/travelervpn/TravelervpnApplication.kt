@@ -1,12 +1,11 @@
 package com.backend.travelervpn
 
-import com.backend.travelervpn.config.AppProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.boot.runApplication
 import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories
 
-@SpringBootApplication
+@SpringBootApplication(exclude = [DataSourceAutoConfiguration::class])
 @EnableCassandraRepositories(basePackages = ["com.backend.travelervpn.repository"])
 class TravelervpnApplication
 

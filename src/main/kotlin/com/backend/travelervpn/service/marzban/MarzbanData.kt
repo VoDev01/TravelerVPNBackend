@@ -1,4 +1,4 @@
-package com.backend.travelervpn.service
+package com.backend.travelervpn.service.marzban
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonValue

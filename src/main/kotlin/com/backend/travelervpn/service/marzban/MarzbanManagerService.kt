@@ -1,4 +1,4 @@
-package com.backend.travelervpn.service
+package com.backend.travelervpn.service.marzban
 
 import com.backend.travelervpn.config.AppProperties
 import com.backend.travelervpn.entity.VpnUser

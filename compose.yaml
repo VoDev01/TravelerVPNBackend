@@ -19,10 +19,7 @@ services:
   vpn-backend:
     image: traveler_vpn:latest
     environment:
-      - SPRING_CASSANDRA_CONTACT_POINTS=cassandra:9042
-      - SPRING_CASSANDRA_LOCAL_DATACENTER=datacenter1
-      - SPRING_CASSANDRA_KEYSPACE_NAME=traveler_vpn
-      - SPRING_CASSANDRA_SCHEMA_ACTION=create_if_not_exists
+      FLYWAY_NATIVE_CONNECTORS: true
     depends_on:
       cassandra:
         condition: service_healthy
@@ -66,7 +63,7 @@ services:
       vault-agent-init:
         condition: "service_completed_successfully"
     command:
-      ["/bin/sh", "-c", "init.sh & vault agent -config=/vault/agent-config.hcl"]
+      ["/bin/sh", "-c", "init.sh && vault agent -config=/vault/agent-config.hcl"]
     restart: always
     healthcheck:
       test: ["CMD", "sh", "-c", "test -s /vault/secrets/vault-token"]

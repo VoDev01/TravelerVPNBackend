@@ -4,9 +4,24 @@ import com.backend.travelervpn.entity.VpnUser
 import com.backend.travelervpn.generated.api.schema.Client
 import com.backend.travelervpn.repository.VpnUserRepository
 import com.backend.travelervpn.service.VpnLinkExtractorService
-import com.backend.travelervpn.service.XUIManagerService
+import com.backend.travelervpn.service.xui.XUIManagerService
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.utils.io.CancellationException
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.WebSocketSession
+import io.ktor.websocket.close
+import io.ktor.websocket.readReason
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
+import org.springframework.messaging.MessageChannel
+import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -16,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.optionals.getOrNull
 
 data class VpnResponse(
@@ -31,9 +47,11 @@ data class VpnResponse(
 class VpnController(
     private val vpnUserRepository: VpnUserRepository,
     private val xuiManagerService: XUIManagerService,
-    private val vpnLinkExtractorService: VpnLinkExtractorService
+    private val vpnLinkExtractorService: VpnLinkExtractorService,
+    private val messagingTemplate: SimpMessagingTemplate,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+    private var wsSession: DefaultClientWebSocketSession? = null
 
     private suspend fun createNewUser(userId: String? = null): VpnUser {
         val inbounds = xuiManagerService.getAllInbounds() ?: throw IllegalStateException("No inbounds found")
@@ -192,9 +210,9 @@ class VpnController(
         return try {
             xuiManagerService.login()
 
-            val response = xuiManagerService.ws()
+            wsSession = xuiManagerService.ws()
 
-            VpnResponse(status = "success", response = response)
+            VpnResponse(status = "success")
         } catch (ex: Exception) {
             log.error(ex.message, ex)
             VpnResponse(status = "error", message = "Something went wrong")
@@ -210,6 +228,83 @@ class VpnController(
         } catch (ex: Exception) {
             log.error(ex.message, ex)
             VpnResponse(status = "error", message = "Something went wrong")
+        } finally {
+            wsSession?.close(CloseReason(CloseReason.Codes.NORMAL, "Client disconnected"))
+            wsSession = null
         }
     }
+
+    @GetMapping(path = ["/ws/metrics"])
+    suspend fun metrics() {
+        val session = wsSession
+            ?: throw IllegalStateException(
+                "WebSocket session not initialized. Call /api/ws first to establish upstream connection."
+            )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                session.let {
+                    for (frame in it.incoming) {
+                        when (frame) {
+                            is Frame.Text -> {
+                                val payload = frame.readText()
+                                log.debug("Forwarding payload to subscribers: $payload")
+                                messagingTemplate.convertAndSend(
+                                    "/metrics/data",
+                                    payload
+                                )
+                            }
+
+                            is Frame.Binary -> {
+                                log.debug("Received binary frame of size: ${frame.data.size}")
+                                messagingTemplate.convertAndSend(
+                                    "/metrics/data",
+                                    mapOf(
+                                        "type" to "binary",
+                                        "size" to frame.data.size
+                                    ) as Any
+                                )
+                            }
+
+                            is Frame.Ping -> {
+                                session.outgoing.trySend(Frame.Pong(frame.data))
+                            }
+
+                            is Frame.Pong -> {
+                                session.outgoing.trySend(Frame.Ping(frame.data))
+                            }
+
+                            is Frame.Close -> {
+                                log.info("Upstream WebSocket closed: $frame")
+                                messagingTemplate.convertAndSend(
+                                    "/metrics/data",
+                                    mapOf(
+                                        "type" to "closed",
+                                        "code" to frame.readReason()?.code,
+                                        "reason" to frame.readReason()?.message
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                log.error("Error forwarding WebSocket data: ${e.message}", e)
+                try {
+                    messagingTemplate.convertAndSend(
+                        "/metrics/data",
+                        mapOf(
+                            "type" to "error",
+                            "message" to (e.message ?: "Unknown error")
+                        ) as Any
+                    )
+                } catch (_: Exception) {
+                    // Connection already lost
+                }
+                wsSession?.close(CloseReason(CloseReason.Codes.INTERNAL_ERROR, "Internal Error"))
+                wsSession = null
+            }
+        }
+    }
+
 }

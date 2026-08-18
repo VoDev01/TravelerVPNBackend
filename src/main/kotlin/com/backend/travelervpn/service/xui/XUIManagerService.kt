@@ -1,48 +1,105 @@
-package com.backend.travelervpn.service
+package com.backend.travelervpn.service.xui
 
 import com.backend.travelervpn.config.AppProperties
 import com.backend.travelervpn.generated.api.AuthenticationApi
 import com.backend.travelervpn.generated.api.ClientsApi
 import com.backend.travelervpn.generated.api.InboundsApi
 import com.backend.travelervpn.generated.api.NodesApi
-import com.backend.travelervpn.generated.api.WebSocketApi
 import com.backend.travelervpn.generated.api.schema.Client
 import com.backend.travelervpn.generated.api.schema.ClientTraffic
 import com.backend.travelervpn.generated.api.schema.Inbound
 import com.backend.travelervpn.generated.api.schema.PostLoginRequest
 import com.backend.travelervpn.generated.api.schema.ProbeResultUI
+import com.backend.travelervpn.repository.VpnUserRepositoryReactive
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.URLProtocol
+import io.ktor.http.Url
+import io.ktor.http.isSecure
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.WebSocketSession
+import io.ktor.websocket.close
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.apache.hc.core5.http.HttpException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import tools.jackson.databind.ObjectMapper
 import java.util.UUID
 
 @Service
 class XUIManagerService(
-    private val appProperties: AppProperties
+    private val appProperties: AppProperties,
+    private val objectMapper: ObjectMapper,
+    private val vpnUserRepositoryReactive: VpnUserRepositoryReactive
 ) {
     val subUrl = "http://host.docker.internal:2096/sub"
-    private val privateUrl = "http://host.docker.internal:52010/${appProperties.xuiSecretPath}"
 
+    private val privateUrl = "http://host.docker.internal:56832/${appProperties.xuiSecretPath}"
     private val logger = LoggerFactory.getLogger(this::class.java)
+    private val sharedCookiesStorage = AcceptAllCookiesStorage()
+    private val wsClient = HttpClient {
+        install(WebSockets)
+        install(HttpCookies) {
+            storage = sharedCookiesStorage
+        }
+        defaultRequest {
+            if (url.protocol == URLProtocol.HTTP) url.protocol = URLProtocol.WS
+            if (url.protocol == URLProtocol.HTTPS) url.protocol = URLProtocol.WSS
+        }
+    }
+    private var wsJob: Job? = null
 
-    suspend fun login(): String? {
+    suspend fun login(): Boolean? {
         return try {
-            val authApi = AuthenticationApi(privateUrl)
+            var csrfToken: String? = null
+
+            val authApi = AuthenticationApi(
+                baseUrl = privateUrl,
+                httpClientConfig = {
+                    it.install(HttpCookies) {
+                        storage = sharedCookiesStorage
+                    }
+                    it.defaultRequest {
+                        csrfToken?.let { token ->
+                            header("X-CSRF-Token", token)
+                        }
+                    }
+                }
+            )
 
             authApi.setBearerToken(appProperties.xuiToken.trim())
 
+            val csrfResponse = authApi.getCsrfToken()
+
+            csrfToken = (csrfResponse.body().obj
+                ?: csrfResponse.headers["X-CSRF-Token"]
+                ?: csrfResponse.body().msg) as String?
+
+            if (csrfToken.isNullOrBlank()) {
+                throw HttpException("Unable to get csrf token")
+            }
+
             val response = authApi.postLogin(postLoginRequest = PostLoginRequest(
-                username = appProperties.xuiUsername,
-                password = appProperties.xuiPassword,
+                username = appProperties.xuiUsername.trim(),
+                password = appProperties.xuiPassword.trim(),
                 twoFactorCode = "" //TODO: IMPLEMENT TWO FA
             ))
 
             if(response.status != 200) throw HttpException(response.body().msg)
 
-            if(response.body().obj is Unit || response.body().obj == null)
-                null
-            else
-                response.body().obj as String?
+            response.body().success
         } catch (e: Exception) {
             logger.error(e.message, e)
             null
@@ -51,61 +108,100 @@ class XUIManagerService(
 
     suspend fun logout(): Boolean {
         return try {
-            val authApi = AuthenticationApi(privateUrl)
+            var csrfToken: String? = null
 
-            val csrf = csrf() ?: throw Exception("Unable to get csrf")
+            val authApi = AuthenticationApi(
+                baseUrl = privateUrl,
+                httpClientConfig = {
+                    it.install(HttpCookies) {
+                        storage = sharedCookiesStorage
+                    }
+                    it.defaultRequest {
+                        csrfToken?.let { token ->
+                            header("X-CSRF-Token", token)
+                        }
+                    }
+                }
+            )
 
-            authApi.setApiKey(csrf)
+            val csrfResponse = authApi.getCsrfToken()
+
+            csrfToken = (csrfResponse.body().obj
+                ?: csrfResponse.headers["X-CSRF-Token"]
+                ?: csrfResponse.body().msg) as String?
+
+            if (csrfToken.isNullOrBlank()) {
+                throw HttpException("Unable to get csrf token")
+            }
 
             val response = authApi.postLogout()
 
             if(response.status != 200) throw HttpException(response.body().msg)
 
+            logger.info("Logged out")
             true
         } catch (e: Exception) {
             logger.error(e.message, e)
             false
+        } finally {
+            wsJob?.cancel()
+            wsJob = null
         }
     }
 
-    suspend fun csrf(): String? {
+    suspend fun ws(): DefaultClientWebSocketSession? {
+        var wsSession: DefaultClientWebSocketSession? = null
         return try {
-            val authApi = AuthenticationApi(privateUrl)
+            val isLoggedIn = login() ?: throw Exception("Invalid credentials")
+            if(!isLoggedIn) throw Exception("Invalid credentials")
 
-            authApi.setBearerToken(appProperties.xuiToken.trim())
+            val cleanUrl = Url(privateUrl)
 
-            val response = authApi.getCsrfToken()
+            wsJob = CoroutineScope(Dispatchers.IO).launch {
+                wsClient.webSocket(
+                    method = HttpMethod.Get,
+                    host = cleanUrl.host,
+                    port = cleanUrl.port,
+                    path = "${cleanUrl.encodedPath}/ws",
+                    request = {
+                        url.protocol = if (cleanUrl.protocol.isSecure()) URLProtocol.WSS else URLProtocol.WS
+                        header(
+                            HttpHeaders.Origin,
+                            privateUrl.trim()
+                        )
+                    }
+                ) {
+                    logger.info("WebSocket connection established")
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+                    wsSession = this
 
-            if(response.body().obj is Unit || response.body().obj == null)
-                null
-            else
-                response.body().obj as String?
+                    for (frame in incoming) {
+                        if (frame is Frame.Text) {
+                            val data = objectMapper.readValue(frame.data, XuiWebSocketData::class.java)
+                            when(data.type) {
+                                "client_traffic" -> {
+                                    val payload = data.payload
+                                    if (payload is XuiClientStatsPayload) {
+                                        try {
+                                            vpnUserRepositoryReactive.setTotal(payload.email, payload.total)
+                                        } catch (e: Exception) {
+                                            logger.error(e.message)
+                                        }
+                                    }
+                                }
+                                else -> continue
+                            }
+                        }
+                    }
+                }
+            }
+
+            wsSession
         } catch (e: Exception) {
             logger.error(e.message, e)
-            null
-        }
-    }
-
-    suspend fun ws(): Any? {
-        return try {
-            val wsApi = WebSocketApi(privateUrl)
-
-            val sessionToken = login() ?: throw Exception("Invalid credentials")
-
-            wsApi.setApiKey(sessionToken)
-
-            val response = wsApi.getWs()
-
-            if(response.status != 101) throw HttpException(response.body().msg)
-
-            if(response.body().obj is Unit || response.body().obj == null)
-                null
-            else
-                response.body().obj
-        } catch (e: Exception) {
-            logger.error(e.message, e)
+            wsSession?.close(reason = CloseReason(CloseReason.Codes.INTERNAL_ERROR, "Closing session due to error"))
+            wsJob?.cancel()
+            wsJob = null
             null
         }
     }

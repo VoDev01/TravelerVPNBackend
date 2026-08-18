@@ -53,10 +53,10 @@ services:
     command: [
       "/bin/sh",
       "-c",
-      "init-vault.sh & exec vault server -dev -dev-listen-address=0.0.0.0:8200"
+      "init.sh & exec vault server -dev -dev-listen-address=0.0.0.0:8200"
     ]
     volumes:
-      - ./docker/vault/init-vault.sh:/usr/local/bin/init-vault.sh
+      - ./docker/vault/init-vault.sh:/usr/local/bin/init.sh
     secrets:
       - vault_secrets
 
