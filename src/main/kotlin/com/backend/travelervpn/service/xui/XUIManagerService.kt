@@ -5,48 +5,25 @@ import com.backend.travelervpn.generated.api.AuthenticationApi
 import com.backend.travelervpn.generated.api.ClientsApi
 import com.backend.travelervpn.generated.api.InboundsApi
 import com.backend.travelervpn.generated.api.NodesApi
-import com.backend.travelervpn.generated.api.schema.Client
-import com.backend.travelervpn.generated.api.schema.ClientTraffic
-import com.backend.travelervpn.generated.api.schema.Inbound
-import com.backend.travelervpn.generated.api.schema.PostLoginRequest
-import com.backend.travelervpn.generated.api.schema.ProbeResultUI
-import com.backend.travelervpn.repository.VpnUserRepositoryReactive
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
-import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
-import io.ktor.http.isSecure
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.WebSocketSession
-import io.ktor.websocket.close
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import com.backend.travelervpn.generated.api.schema.*
+import io.ktor.client.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.cookies.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import org.apache.hc.core5.http.HttpException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import tools.jackson.databind.ObjectMapper
-import java.util.UUID
+import java.util.*
 
 @Service
 class XUIManagerService(
     private val appProperties: AppProperties,
-    private val objectMapper: ObjectMapper,
-    private val vpnUserRepositoryReactive: VpnUserRepositoryReactive
 ) {
-    val subUrl = "http://host.docker.internal:2096/sub"
+    val subUrl = appProperties.xuiSubUrl
 
-    private val privateUrl = "http://host.docker.internal:56832/${appProperties.xuiSecretPath}"
+    private val privateUrl = "${appProperties.xuiPrivateUrl}/${appProperties.xuiSecretPath}"
     private val logger = LoggerFactory.getLogger(this::class.java)
     private val sharedCookiesStorage = AcceptAllCookiesStorage()
     private val wsClient = HttpClient {
@@ -59,7 +36,6 @@ class XUIManagerService(
             if (url.protocol == URLProtocol.HTTPS) url.protocol = URLProtocol.WSS
         }
     }
-    private var wsJob: Job? = null
 
     suspend fun login(): Boolean? {
         return try {
@@ -138,70 +114,37 @@ class XUIManagerService(
 
             if(response.status != 200) throw HttpException(response.body().msg)
 
-            logger.info("Logged out")
+            logger.info("Websocket logged out")
             true
         } catch (e: Exception) {
             logger.error(e.message, e)
             false
-        } finally {
-            wsJob?.cancel()
-            wsJob = null
         }
     }
 
     suspend fun ws(): DefaultClientWebSocketSession? {
-        var wsSession: DefaultClientWebSocketSession? = null
         return try {
             val isLoggedIn = login() ?: throw Exception("Invalid credentials")
             if(!isLoggedIn) throw Exception("Invalid credentials")
 
             val cleanUrl = Url(privateUrl)
 
-            wsJob = CoroutineScope(Dispatchers.IO).launch {
-                wsClient.webSocket(
+            wsClient.webSocketSession(
                     method = HttpMethod.Get,
                     host = cleanUrl.host,
                     port = cleanUrl.port,
-                    path = "${cleanUrl.encodedPath}/ws",
-                    request = {
-                        url.protocol = if (cleanUrl.protocol.isSecure()) URLProtocol.WSS else URLProtocol.WS
-                        header(
-                            HttpHeaders.Origin,
-                            privateUrl.trim()
-                        )
-                    }
+                    path = "${cleanUrl.encodedPath}/ws"
                 ) {
                     logger.info("WebSocket connection established")
 
-                    wsSession = this
-
-                    for (frame in incoming) {
-                        if (frame is Frame.Text) {
-                            val data = objectMapper.readValue(frame.data, XuiWebSocketData::class.java)
-                            when(data.type) {
-                                "client_traffic" -> {
-                                    val payload = data.payload
-                                    if (payload is XuiClientStatsPayload) {
-                                        try {
-                                            vpnUserRepositoryReactive.setTotal(payload.email, payload.total)
-                                        } catch (e: Exception) {
-                                            logger.error(e.message)
-                                        }
-                                    }
-                                }
-                                else -> continue
-                            }
-                        }
-                    }
-                }
+                    url.protocol = if (cleanUrl.protocol.isSecure()) URLProtocol.WSS else URLProtocol.WS
+                    header(
+                        HttpHeaders.Origin,
+                        privateUrl.trim()
+                    )
             }
-
-            wsSession
         } catch (e: Exception) {
             logger.error(e.message, e)
-            wsSession?.close(reason = CloseReason(CloseReason.Codes.INTERNAL_ERROR, "Closing session due to error"))
-            wsJob?.cancel()
-            wsJob = null
             null
         }
     }
@@ -246,32 +189,32 @@ class XUIManagerService(
 
     suspend fun createClient(
         userId: String? = null,
-        expiryTime: Long = 0L,
-        totalGB: Long = 0L,
+        expiryTime: Long? = 0L,
+        totalGB: Long? = 0L,
         tgId: Long = 0L,
         inbounds: List<Int>
-    ): String? {
+    ): Client? {
         return try {
             var uuid = UUID.randomUUID().toString()
-            var subId = uuid.replace("-", "").take(16)
+            var subId = uuid.replace("-", "")
 
             if(userId != null) {
                 uuid = userId
-                subId = uuid.replace("-", "").take(16)
+                subId = uuid.replace("-", "")
             }
 
-            val client = Client(
+            val client  = Client(
                 id = uuid,
-                email = uuid.plus("@secret.com"),
+                email = uuid.replace("-", "").plus("@secret.com"),
                 comment = "",
                 enable = true,
-                expiryTime = expiryTime,
+                expiryTime = expiryTime ?: 0L,
                 limitIp = 0,
                 reset = 0,
                 security = "auto",
                 subId = subId,
                 tgId = tgId,
-                totalGB = totalGB
+                totalGB = totalGB ?: 0L
             )
 
             val newClientRequest = mapOf(
@@ -287,7 +230,7 @@ class XUIManagerService(
 
             if(response.status != 200) throw HttpException(response.body().msg)
 
-            subId
+            client
         } catch (e: Exception) {
             logger.error(e.message, e)
             null
@@ -433,33 +376,20 @@ class XUIManagerService(
         }
     }
 
-    suspend fun testNode(address: String, port: Int, apiToken: String): ProbeResultUI? {
+    suspend fun probeNode(nodeId: Int): ProbeResultUI? {
         return try{
             val nodesApi = NodesApi(privateUrl)
 
             nodesApi.setBearerToken(appProperties.xuiToken.trim())
 
-            data class NodeTestRequest(
-                val address: String,
-                val port: Int,
-                val basePath: String,
-                val scheme: String,
-                val apiToken: String,
-            )
-
-            val testRequest = NodeTestRequest(
-                address = address,
-                port = port,
-                basePath = "/",
-                scheme = "https",
-                apiToken = apiToken
-            )
-
-            val response = nodesApi.postPanelApiNodesTest(testRequest)
+            val response = nodesApi.postPanelApiNodesProbeId(nodeId)
 
             if(response.status != 200) throw HttpException(response.body().msg)
 
-            response.body().obj
+            if(response.body().obj is Unit || response.body().obj == null)
+                null
+            else
+                response.body().obj as ProbeResultUI?
         } catch (e: Exception) {
             logger.error(e.message, e)
             null

@@ -20,17 +20,16 @@ data class VpnUser(
     @Column("user_id")
     val userId: UUID,
     val username: String,
+    val email: String,
     @Column("connection_links")
     val connectionLinks: Set<String> = setOf(),
     @Column("plan")
     val plan: UserPlan = UserPlan.FREE,
     val status: UserStatus = UserStatus.ACTIVE,
     @Column("last_payment_at")
-    @CassandraType(type = CassandraType.Name.BIGINT)
-    val lastPaymentAt: Instant? = null,
+    val lastPaymentAt: Long? = null,
     @Column("expiry_at")
-    @CassandraType(type = CassandraType.Name.BIGINT)
-    val expiryAt: Instant? = null,
+    val expiryAt: Long? = null,
     @Column("traffic_left")
     val trafficLeft: Long? = null,
 )

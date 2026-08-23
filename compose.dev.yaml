@@ -7,10 +7,10 @@ services:
       CASSANDRA_USER: "dev"
       CASSANDRA_PASSWORD: "dev"
       CASSANDRA_AUTHENTICATOR: "PasswordAuthenticator"
-    ports:
-      - "9042:9042"
     networks:
       - vpn_network
+    ports:
+      - "9042:9042"
     restart: always
 
   vpn-backend:
@@ -43,8 +43,6 @@ services:
   vault:
     networks:
       - vpn_network
-    ports:
-      - "8200:8200"
     restart: always
     environment:
       VAULT_ADDR: "http://127.0.0.1:8200"
@@ -59,6 +57,8 @@ services:
       - ./docker/vault/init-vault.sh:/usr/local/bin/init.sh
     secrets:
       - vault_secrets
+    ports:
+      - "8200:8200"
 
   vault-agent:
     environment:

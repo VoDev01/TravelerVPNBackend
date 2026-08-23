@@ -16,6 +16,6 @@ USER spring:spring
 RUN find . -type f -exec chown spring:spring {} + && \
     find . -type d -exec chown spring:spring {} +
 
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY --from=builder /app/build/libs/*-plain.jar app.jar
 
 CMD ["java", "-XX:+UseG1GC", "-Xmx512m", "-jar", "app.jar"]

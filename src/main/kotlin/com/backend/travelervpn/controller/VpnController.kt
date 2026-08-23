@@ -2,43 +2,34 @@ package com.backend.travelervpn.controller
 
 import com.backend.travelervpn.entity.VpnUser
 import com.backend.travelervpn.generated.api.schema.Client
+import com.backend.travelervpn.generated.api.schema.ClientTraffic
+import com.backend.travelervpn.generated.api.schema.Inbound
 import com.backend.travelervpn.repository.VpnUserRepository
+import com.backend.travelervpn.repository.VpnUserRepositoryReactive
 import com.backend.travelervpn.service.VpnLinkExtractorService
 import com.backend.travelervpn.service.xui.XUIManagerService
-import com.fasterxml.jackson.databind.ObjectMapper
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.utils.io.CancellationException
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.WebSocketSession
-import io.ktor.websocket.close
-import io.ktor.websocket.readReason
-import io.ktor.websocket.readText
+import com.backend.travelervpn.service.xui.XuiWebSocketData
+import io.ktor.client.plugins.websocket.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
-import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.simp.SimpMessagingTemplate
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestMethod
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
+import tools.jackson.databind.ObjectMapper
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.UUID
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
 data class VpnResponse(
     val status: String,
     val response: Any? = null,
-    val client: Client? = null,
-    val connectionLinks: List<String>? = null,
     val message: String? = null
 )
 
@@ -46,16 +37,17 @@ data class VpnResponse(
 @RequestMapping("/api")
 class VpnController(
     private val vpnUserRepository: VpnUserRepository,
+    private val vpnUserRepositoryReactive: VpnUserRepositoryReactive,
     private val xuiManagerService: XUIManagerService,
     private val vpnLinkExtractorService: VpnLinkExtractorService,
     private val messagingTemplate: SimpMessagingTemplate,
+    private val objectMapper: ObjectMapper,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private var wsSession: DefaultClientWebSocketSession? = null
+    private var wsFuture = CompletableDeferred<DefaultClientWebSocketSession>()
 
-    private suspend fun createNewUser(userId: String? = null): VpnUser {
-        val inbounds = xuiManagerService.getAllInbounds() ?: throw IllegalStateException("No inbounds found")
-
+    private suspend fun createNewUser(userId: String? = null, inbounds: List<Inbound>): VpnUser {
         val expiryAt = Instant.now()
             .plus(7, ChronoUnit.DAYS)
 
@@ -71,25 +63,30 @@ class VpnController(
 
         delay(500L)
 
-        val connectionLinks = vpnLinkExtractorService.extractLinksFromSubscription("${xuiManagerService.subUrl}/$newUser")
-
-        val uuid = UUID.fromString(userId) ?: UUID.randomUUID()
+        val connectionLinks =
+            vpnLinkExtractorService.extractLinksFromSubscription(
+                "${xuiManagerService.subUrl}/${newUser.subId}"
+            )
 
         return vpnUserRepository.save(
             VpnUser(
-                userId = uuid,
+                userId = UUID.fromString(newUser.id),
                 username = Instant
                     .now()
                     .toEpochMilli()
                     .toString()
-                    .plus("_${uuid
-                        .toString()
-                        .replace("-", "")
-                        .take(12)}"
+                    .plus(
+                        "_${
+                            newUser.id
+                                .toString()
+                                .replace("-", "")
+                                .take(8)
+                        }"
                     ),
                 connectionLinks = connectionLinks,
-                expiryAt = expiryAt,
-                trafficLeft = trafficByte
+                expiryAt = expiryAt.toEpochMilli(),
+                trafficLeft = trafficByte,
+                email = newUser.email,
             )
         )
     }
@@ -97,27 +94,45 @@ class VpnController(
     @PostMapping("/user/subscription")
     suspend fun subscription(@RequestParam(required = false) userId: String?): VpnResponse {
         return try {
-            var user: VpnUser?
+            var user: VpnUser? = null
             var message: String? = null
+            val inbounds = xuiManagerService.getAllInbounds() ?: throw IllegalStateException("No inbounds found")
+
             if (userId != null && userId.isNotEmpty()) {
                 user = vpnUserRepository.findById(userId).getOrNull()
 
                 if (user == null) {
-                    user = createNewUser()
+                    user = createNewUser(inbounds = inbounds)
                 }
             } else {
-                user = createNewUser(userId)
+                user = createNewUser(userId, inbounds)
                 message = "Created new user"
+            }
+
+            data class SubscriptionResponse(
+                val inbound: Inbound,
+                val connectionLink: String
+            )
+
+            val response: MutableList<SubscriptionResponse> = mutableListOf()
+
+            inbounds.zip(user.connectionLinks.toTypedArray()).forEach {
+                response.add(
+                    SubscriptionResponse(
+                        it.first,
+                        it.second
+                    )
+                )
             }
 
             VpnResponse(
                 status = "success",
-                connectionLinks = user.connectionLinks.toList(),
+                response = response,
                 message = message
             )
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -129,11 +144,11 @@ class VpnController(
 
             VpnResponse(
                 status = "success",
-                client = user,
+                response = user,
             )
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -153,7 +168,7 @@ class VpnController(
             VpnResponse("success")
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -165,19 +180,7 @@ class VpnController(
             VpnResponse(status = "success", response = response)
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
-        }
-    }
-
-    @PostMapping(path = ["/node/test"])
-    suspend fun testNode(address: String, port: Int, apiToken: String): VpnResponse {
-        return try {
-            val response = xuiManagerService.testNode(address, port, apiToken)
-
-            VpnResponse(status = "success", response = response)
-        } catch (ex: Exception) {
-            log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -189,7 +192,7 @@ class VpnController(
             VpnResponse(status = "success", response = response)
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -201,7 +204,7 @@ class VpnController(
             VpnResponse(status = "success", response = response)
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -211,11 +214,16 @@ class VpnController(
             xuiManagerService.login()
 
             wsSession = xuiManagerService.ws()
+            if (wsSession !== null) {
+                wsFuture.complete(wsSession!!)
+            } else {
+                wsFuture.completeExceptionally(Exception("No WS Session"))
+            }
 
             VpnResponse(status = "success")
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         }
     }
 
@@ -227,63 +235,83 @@ class VpnController(
             VpnResponse(status = "success", response = response)
         } catch (ex: Exception) {
             log.error(ex.message, ex)
-            VpnResponse(status = "error", message = "Something went wrong")
+            VpnResponse(status = "error", message = "Internal server error")
         } finally {
             wsSession?.close(CloseReason(CloseReason.Codes.NORMAL, "Client disconnected"))
             wsSession = null
         }
     }
 
-    @GetMapping(path = ["/ws/metrics"])
-    suspend fun metrics() {
-        val session = wsSession
-            ?: throw IllegalStateException(
-                "WebSocket session not initialized. Call /api/ws first to establish upstream connection."
-            )
-
+    @MessageMapping("/client/traffic")
+    @SendTo("/data/client/traffic")
+    fun clientTraffic() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                session.let {
+                val session = wsFuture.await()
+                session.let { it ->
                     for (frame in it.incoming) {
                         when (frame) {
                             is Frame.Text -> {
-                                val payload = frame.readText()
-                                log.debug("Forwarding payload to subscribers: $payload")
-                                messagingTemplate.convertAndSend(
-                                    "/metrics/data",
-                                    payload
-                                )
-                            }
+                                try {
+                                    val socketData = objectMapper.readValue(frame.data, XuiWebSocketData::class.java)
+                                    var clientEmail = ""
+                                    log.info("Received payload: $socketData")
 
-                            is Frame.Binary -> {
-                                log.debug("Received binary frame of size: ${frame.data.size}")
-                                messagingTemplate.convertAndSend(
-                                    "/metrics/data",
-                                    mapOf(
-                                        "type" to "binary",
-                                        "size" to frame.data.size
-                                    ) as Any
-                                )
-                            }
+                                    if (socketData.type === "client_creds") {
+                                        if (socketData.payload is String)
+                                            clientEmail = socketData.payload
+                                        else
+                                            throw IllegalArgumentException("Payload must be a string")
+                                    }
 
-                            is Frame.Ping -> {
-                                session.outgoing.trySend(Frame.Pong(frame.data))
-                            }
+                                    when (socketData.type) {
+                                        "client_stats" -> {
+                                            try {
+                                                val payload = socketData.payload
+                                                for (client in payload as Array<ClientTraffic>) {
+                                                    if (vpnUserRepository.findAll()
+                                                            .firstOrNull
+                                                            { user -> user.email == client.email }
+                                                        != null
+                                                    ) {
+                                                        vpnUserRepositoryReactive.setTotal(
+                                                            client.email,
+                                                            client.total
+                                                        )
+                                                    }
+                                                    if (client.email == clientEmail) {
+                                                        messagingTemplate.convertAndSend(
+                                                            "/ws/metrics/data",
+                                                            client
+                                                        )
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                log.error(e.message, e)
+                                            }
+                                        }
 
-                            is Frame.Pong -> {
-                                session.outgoing.trySend(Frame.Ping(frame.data))
+                                        else -> continue
+                                    }
+                                } catch (ex: Exception) {
+                                    log.error(ex.message, ex)
+                                }
                             }
 
                             is Frame.Close -> {
-                                log.info("Upstream WebSocket closed: $frame")
+                                log.info("WebSocket connection closed")
                                 messagingTemplate.convertAndSend(
-                                    "/metrics/data",
+                                    "/ws/metrics/data",
                                     mapOf(
                                         "type" to "closed",
                                         "code" to frame.readReason()?.code,
                                         "reason" to frame.readReason()?.message
                                     )
                                 )
+                            }
+
+                            else -> {
+                                log.info("Skipping frame of type ${frame.frameType.name}")
                             }
                         }
                     }
@@ -292,7 +320,7 @@ class VpnController(
                 log.error("Error forwarding WebSocket data: ${e.message}", e)
                 try {
                     messagingTemplate.convertAndSend(
-                        "/metrics/data",
+                        "/ws/metrics/data",
                         mapOf(
                             "type" to "error",
                             "message" to (e.message ?: "Unknown error")
@@ -306,5 +334,4 @@ class VpnController(
             }
         }
     }
-
 }

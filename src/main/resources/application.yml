@@ -9,6 +9,8 @@ spring:
   xuiSecretPath: ${xuiSecretPath}
   xuiUsername: ${xuiUsername}
   xuiPassword: ${xuiPassword}
+  xuiPrivateUrl: "http://host.docker.internal:56832"
+  xuiSubUrl: "http://host.docker.internal:2096/sub"
 
   config:
     import: "vault://"

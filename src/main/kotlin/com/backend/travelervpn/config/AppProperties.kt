@@ -17,7 +17,6 @@ class AppProperties {
     lateinit var serverIp: String
     @NotNull
     lateinit var maskDomain: String
-    var serverPort = 443
     @NotNull
     lateinit var marzbanUsername: String
     @NotNull
@@ -30,4 +29,8 @@ class AppProperties {
     lateinit var xuiUsername: String
     @NotNull
     lateinit var xuiPassword: String
+    @NotNull
+    lateinit var xuiPrivateUrl: String
+    @NotNull
+    lateinit var xuiSubUrl: String
 }

@@ -3,6 +3,7 @@ package com.backend.travelervpn.service
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.fullPath
 import java.util.Base64
 import java.nio.charset.StandardCharsets
 import org.slf4j.LoggerFactory
@@ -18,7 +19,7 @@ class VpnLinkExtractorService {
             val httpResponse: HttpResponse = httpClient.get(subscriptionUrl)
 
             if (httpResponse.status.value != 200) {
-                logger.error("3x-ui error: ${httpResponse.status}")
+                logger.error("3x-ui error: ${httpResponse.request.url.fullPath} ${httpResponse.status}")
                 return emptySet()
             }
 
