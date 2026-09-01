@@ -8,8 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     bash \
     wget \
-    unzip\
-    locales
+    unzip \
+    locales \
+    openssh-client \
+    nano
 
 RUN sed -i '/en_US.UTF-8 UTF-8/s/^# //' /etc/locale.gen && \
     locale-gen
