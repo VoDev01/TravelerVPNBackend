@@ -13,7 +13,7 @@ sleep 2
 
 echo -e "\n[Info] Vault is ready! Writing secrets..."
 
-SECRET_FILE="/run/secrets/vault_secrets"
+SECRET_FILE="/run/secrets/app_secrets"
 
 if [ -f "$SECRET_FILE" ]; then
   set -a

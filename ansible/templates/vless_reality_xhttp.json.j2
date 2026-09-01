@@ -1,0 +1,36 @@
+{
+  "address": "{{ inbound.address }}"
+  "listen": "0.0.0.0",
+  "enable": true,
+  "remark": "{{ inbound.remark }}",
+  "port": {{ inbound.port }},
+  "protocol": "vless",
+  "sniffing": "{\"enabled\":true,\"destOverride\":[\"http\",\"tls\",\"quic\"]}",
+  "settings": {{ {
+    "clients": [],
+    "decryptions": [],
+    "fallbacks": []
+  } | to_json | to_json }},
+  "streamSettings": {{ {
+    "network": "xhttp",
+    "security": "reality",
+    "externalProxy": [],
+    "xhttpSettings": {
+      "mode": inbound.xhttp_mode | default("auto"),
+      "path": inbound.xhttp_path | default("/drivers/update"),
+      "host": inbound.reality_server_name | default("google.com")
+    },
+    "realitySettings": {
+      "show": false,
+      "xver": 0,
+      "dest": inbound.reality_dest | default("google.com:443"),
+      "serverNames": [ inbound.reality_server_name | default("google.com") ],
+      "privateKey": inbound.reality_private_key,
+      "shortIds": [ inbound.reality_short_id | default("0123456789abcdef") ],
+      "settings": {{ {
+        "publicKey": inbound.reality_public_key,
+        "fingerprint": inbound.fingerprint | default("chrome")
+      } | to_json | to_json }}
+    }
+  } | to_json | to_json }}
+}

@@ -62,7 +62,7 @@ class VpnControllerTest {
         } returns mockk(relaxed = true)
         coEvery { xuiManagerService.getClientByEmail(any()) } returns mockk(relaxed = true)
         coEvery { xuiManagerService.getClientTraffic(any()) } returns mockk(relaxed = true)
-        coEvery { xuiManagerService.probeNode(any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { xuiManagerService.testNode(any(), any(), any()) } returns mockk(relaxed = true)
     }
 
     @Test

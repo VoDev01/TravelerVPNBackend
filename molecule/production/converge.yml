@@ -1,0 +1,5 @@
+---
+# Purpose: bring the instance to the desired state by running the role under test.
+# Molecule calls this playbook with `molecule converge`.
+- name: Converge Node
+  ansible.builtin.import_playbook: "../../ansible/playbooks/node.yml"

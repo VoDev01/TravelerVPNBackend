@@ -1,0 +1,19 @@
+---
+- name: Destroy
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    molecule_instance_config: "{{ lookup('env', 'MOLECULE_INSTANCE_CONFIG') }}"
+    # no_log: "{{ molecule_no_log }}"
+  tasks:
+    - name: Destroy infrastructure instances
+      community.docker.docker_container:
+        name: "{{ item.name }}"
+        state: absent
+      loop: "{{ molecule_yml.platforms }}"
+      notify: Destroy instance
+
+  handlers:
+    - name: Destroy instance
+      ansible.builtin.include_tasks: handlers/destroy_instance.yml

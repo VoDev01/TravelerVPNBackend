@@ -1,0 +1,55 @@
+---
+- name: Add new inbound connection to Master-Panel
+  hosts: vpn_servers
+  gather_facts: false
+
+  tasks:
+    - name: Login to Master-Panel
+      ansible.builtin.uri:
+        url: "{{ xui_api_url }}/login"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          username: "{{ xui_user }}"
+          password: "{{ xui_password }}"
+        status_code: 200
+      register: login_response
+
+    - name: Add node to Master-Panel
+      ansible.builtin.uri:
+        url: "{{ xui_api_url }}/panel/api/nodes/add"
+        method: POST
+        body_format: form-urlencoded
+        headers:
+          Cookie: "{{ login_response.set_cookie }}"
+        body:
+          remark: "{{ item.name }}"
+          address: "{{ item.address }}"
+          port: "{{ item.port }}"
+          apikey: ""
+      loop: "{{ nodes }}"
+      register: node_creation_results
+
+    - name: "Generate reality keys for node_id: {{ target_node_id }}"
+      ansible.builtin.shell: |
+        set -o pipefail
+        /usr/local/x-ui/bin/xray x25519 | grep "Private key" | awk '{print $3}'
+      register: xray_priv_key_cmd
+      changed_when: false
+
+    - name: "Create inbounds for node_id: {{ target_node_id }}"
+      ansible.builtin.uri:
+        url: "{{ xui_api_url }}/panel/api/inbounds/add"
+        method: POST
+        body_format: json
+        headers:
+          Cookie: "{{ login_response.set_cookie }}"
+          Content-Type: "application/json"
+        body: "{{ lookup('template', 'templates/vless_' ~ inbound.transport ~ '.json.j2') | from_json }}"
+        status_code: 200
+      vars:
+        inbound: "{{ item }}"
+        generated_private_key: "{{ xray_priv_key_cmd.stdout | trim }}"
+      loop: "{{ node_inbounds }}"
+      loop_control:
+        label: "Inbound: {{ item.remark }} ({{ item.transport }})"

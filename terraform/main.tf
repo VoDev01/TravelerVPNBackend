@@ -1,50 +1,66 @@
-terraform {
-  required_providers {
-    aeza = {
-      source  = "scinfra-pro/aeza"
-      version = "~> 0.3.0"
-    }
-  }
-
-  required_version = "~> 1.15"
+variable "location" {
+  type = string
+  default = "am2"
 }
 
-variable "aeza_api_key" {
-  type      = string
-  sensitive = true
+variable "node_port" {
+  type = number
   validation {
-    condition     = length(var.aeza_api_key) > 0
-    error_message = "API key must not be empty"
+    condition = var.node_port != null
+    error_message = "Port cant be empty."
   }
 }
 
-variable "aeza_base_url" {
-  description = "Base URL for Aeza API"
-  type        = string
-  default     = "https://my.aeza.net/api"
+variable "ssh_port" {
+  type = number
+  validation {
+    condition = var.ssh_port != null
+    error_message = "SSH port cant be empty."
+  }
 }
 
-provider "aeza" {
-  api_key = var.aeza_api_key
-  base_url = var.aeza_base_url
+resource "serverspace_server" "vless_node" {
+  name = "node-${var.location}"
+  image = "Ubuntu-22.04-X64"
+  ram = 1024
+  cpu = 1
+  boot_volume_size = 25 * 1024
+  location = var.location
+
+  volume {
+    name = "vol1"
+    size = 25 * 1024
+  }
+
+  nic {
+    network = ""
+    network_type = "PublicShared"
+    bandwidth = 50
+  }
+
+  ssh_keys = [
+    resource.serverspace_ssh.node_key.id
+  ]
+
+  connection {
+    host        = self.public_ip_addresses[0]
+    user        = "root"
+    type        = "ssh"
+    private_key = file("./vless_node.pem")
+    timeout     = "1m"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "export PATH=$PATH:/usr/bin",
+      "sudo ufw allow ssh,${var.node_port},80",
+      "sudo ufw allow out 80,443",
+      "sudo ufw enable"
+    ]
+  }  
 }
 
-data "aeza_service_types" "all" {}
-
-data "aeza_products" "all" {}
-
-resource "aeza_service" "test_node_server" {
-  product_id   = 181
-  os           = "ubuntu_2404"
-  payment_term = "hour"
-  name         = "test_node_server"
-  auto_prolong = false
-}
-
-resource "aeza_service" "test_backend_server" {
-  product_id   = 181
-  os           = "ubuntu_2404"
-  payment_term = "hour"
-  name         = "test_backend_server"
-  auto_prolong = false
+output "vless_node" {
+  description = "Vless node data"
+  value = serverspace_server.vless_node
 }

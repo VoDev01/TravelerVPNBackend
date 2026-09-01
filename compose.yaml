@@ -17,6 +17,8 @@ services:
       retries: 10
       start_period: 30s
     restart: always
+    secrets:
+      - app_secrets
 
   vpn-backend:
     image: traveler_vpn:latest
@@ -35,8 +37,6 @@ services:
       - vault-data:/vault/data
       - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - ./docker/vault/init-vault.sh:/usr/local/bin/init-vault.sh
-    secrets:
-      - spring-app-policy
     restart: always
     healthcheck:
       test: ["CMD", "sh", "-c", "vault status"]
@@ -44,6 +44,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    secrets:
+      - spring-app-policy
+      - app_secrets
 
   vault-agent-init:
     image: alpine:latest
@@ -73,10 +76,14 @@ services:
       timeout: 3s
       retries: 5
       start_period: 2s
+    secrets:
+      - app_secrets
 
 secrets:
   spring-app-policy:
     file: ./docker/vault/spring-app-policy.hcl
+  app_secrets:
+    file: ./.secrets
 
 volumes:
   vault-shared:

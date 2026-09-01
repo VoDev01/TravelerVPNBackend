@@ -1,0 +1,48 @@
+---
+- name: Deploy 3x-ui Master-Panel
+  hosts: 3x-node
+  remote_user: root
+  gather_facts: false
+  become: true
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+
+  tasks:
+    - name: Deploy server with terraform
+      community.general.terraform:
+        project_path: "{{ local_project_root }}/terraform/"
+        state: present
+      register: vless_node
+
+    - name: Get ip-address
+      ansible.builtin.set_fact:
+        server_ip: "{{ vless_node.outputs.public_ip.value }}"
+
+    - name: Install curl and python
+      ansible.builtin.apt:
+        name:
+          - curl
+          - python3
+          - python3-pip
+        state: present
+
+    - name: Clone and Run 3x-ui Backend Installer
+      ansible.builtin.shell: |
+        set -o pipefail
+        sudo curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh | bash
+      args:
+        executable: /bin/bash
+      changed_when: true
+      register: install_result
+
+    - name: Install tls certificate
+      ansible.builtin.expect:
+        command: sudo x-ui
+        responses:
+          "Please enter your selection [0-28]:": "20"
+          "Choose an option:": "6"
+          "Do you want to proceed? [Default y]:": "y"
+          "Is {{ansible_default_ipv4.address}} the correct incoming public IPv4 address for this server? [Default y]:": "y"
+          "Do you have an IPv6 address to include? (leave empty to skip):": ""
+          "Port to use for ACME HTTP-01 listener (default 80):": "80"
+        echo: true

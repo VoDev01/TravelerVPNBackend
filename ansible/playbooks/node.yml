@@ -1,0 +1,62 @@
+---
+- name: Deploy server with terraform
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Execute terraform
+      community.general.terraform:
+        project_path: "{{ local_project_root }}/terraform/"
+        state: present
+        variables:
+          node_port: 62053
+          ssh_port: 22
+          serverspace_token: "{{ vault_serverspace_token | default('mock_token_for_testing') }}"
+      register: vless_node
+      when: lookup('env', 'MOLECULE_INVENTORY_FILE') == ''
+
+    - name: Add ip to inventory
+      ansible.builtin.add_host:
+        name: "3x-node"
+        ansible_host: "{{ vless_node.outputs.public_ip.value }}"
+        ansible_user: "root"
+      when: vless_node.outputs.public_ip.value is defined
+
+- name: Install 3x-ui Node and TLS certificate
+  hosts: 3x-node
+  remote_user: root
+  gather_facts: true
+  become: true
+
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+
+  tasks:
+    - name: Install curl and python
+      ansible.builtin.apt:
+        name:
+          - curl
+          - python3
+          - python3-pip
+        state: present
+      when: ansible_connection != "docker"
+
+    - name: Clone and Run 3x-ui Backend Installer
+      ansible.builtin.shell: |
+        set -o pipefail
+        sudo curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh | bash
+      args:
+        executable: /bin/bash
+      changed_when: true
+      register: install_result
+
+    - name: Install tls certificate
+      ansible.builtin.expect:
+        command: sudo x-ui
+        responses:
+          "Please enter your selection [0-28]:": "20"
+          "Choose an option:": "6"
+          "Do you want to proceed? [Default y]:": "y"
+          "Is {{ansible_default_ipv4.address}} the correct incoming public IPv4 address for this server? [Default y]:": "y"
+          "Do you have an IPv6 address to include? (leave empty to skip):": ""
+          "Port to use for ACME HTTP-01 listener (default 80):": "80"
+        echo: true

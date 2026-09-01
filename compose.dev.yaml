@@ -55,8 +55,6 @@ services:
     ]
     volumes:
       - ./docker/vault/init-vault.sh:/usr/local/bin/init.sh
-    secrets:
-      - vault_secrets
     ports:
       - "8200:8200"
 
@@ -67,14 +65,8 @@ services:
       - vpn_network
     volumes:
       - vault-shared:/vault/secrets
-    secrets:
-      - vault_secrets
     restart: always
 
 networks:
   vpn_network:
     driver: bridge
-
-secrets:
-  vault_secrets:
-    file: ./.secrets

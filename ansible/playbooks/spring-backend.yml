@@ -1,0 +1,51 @@
+---
+- name: Deploy Spring Backend and connect to panel
+  hosts: backend
+  remote_user: root
+  gather_facts: false
+  become: true
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+    project_path: /opt/traveler_vpn
+
+  tasks:
+    - name: Deploy server with terraform
+      community.general.terraform:
+        project_path: "{{ local_project_root }}/terraform/"
+        state: present
+      register: vless_node
+
+    - name: Get ip-address
+      ansible.builtin.set_fact:
+        server_ip: "{{ vless_node.outputs.public_ip.value }}"
+
+    - name: Create project directory
+      ansible.builtin.file:
+        path: "{{ project_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose files
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ project_path }}/{{ item }}"
+        mode: '0644'
+      loop:
+        - "{{ local_project_root }}/compose.yaml"
+        - "{{ local_project_root }}/compose.prod.yaml"
+
+    - name: Deploy docker-compose project
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_path }}"
+        files:
+          - compose.yaml
+          - compose.prod.yaml
+        state: present
+
+    - name: Open HTTPS incoming port
+      ansible.builtin.shell: |
+        sudo ufw allow 443
+      args:
+        executable: /bin/bash
+      changed_when: true
+      register: install_result

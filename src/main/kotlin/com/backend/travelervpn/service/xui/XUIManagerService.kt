@@ -246,8 +246,17 @@ class XUIManagerService(
 
             clientsApi.setBearerToken(appProperties.xuiToken.trim())
 
-            val response = clientsApi.postPanelApiClientsUpdateEmail(email.plus("@secret.com"), newClient)
-            if(response.status != 200) throw HttpException(response.body().msg)
+            val client = getClientByEmail(email)
+
+            if(client != null) {
+                val newClient = Client(
+                    id = newClient.id ?: client.id,
+                    email = newClient.email ?: client.email,
+                    comment = newClient.comment ?: client.comment,
+                )
+                val response = clientsApi.postPanelApiClientsUpdateEmail(email.plus("@secret.com"), newClient)
+                if(response.status != 200) throw HttpException(response.body().msg)
+            }
 
         } catch (e: Exception) {
             logger.error(e.message, e)
@@ -265,6 +274,46 @@ class XUIManagerService(
             if(response.status != 200) throw HttpException(response.body().msg)
 
             response.body().obj
+        } catch (e: Exception) {
+            logger.error(e.message, e)
+            null
+        }
+    }
+
+    suspend fun addInbound(request: Inbound): Any? {
+        return try {
+            val inboundsApi = InboundsApi(privateUrl)
+
+            inboundsApi.setBearerToken(appProperties.xuiToken.trim())
+
+            val response = inboundsApi.postPanelApiInboundsAdd(request)
+
+            if(response.status != 200) throw HttpException(response.body().msg)
+
+            if(response.body().obj is Unit || response.body().obj == null)
+                null
+            else
+                response.body().obj
+        } catch (e: Exception) {
+            logger.error(e.message, e)
+            null
+        }
+    }
+
+    suspend fun deleteInbound(inboundId: Int): Any? {
+        return try {
+            val inboundsApi = InboundsApi(privateUrl)
+
+            inboundsApi.setBearerToken(appProperties.xuiToken.trim())
+
+            val response = inboundsApi.postPanelApiInboundsDelId(inboundId)
+
+            if(response.status != 200) throw HttpException(response.body().msg)
+
+            if(response.body().obj is Unit || response.body().obj == null)
+                null
+            else
+                response.body().obj
         } catch (e: Exception) {
             logger.error(e.message, e)
             null
@@ -302,6 +351,28 @@ class XUIManagerService(
 
         } catch (e: Exception) {
             logger.error(e.message, e)
+        }
+    }
+
+    suspend fun getClientIps(
+        email: String,
+    ): List<String>? {
+        return try {
+            val clientsApi = ClientsApi(privateUrl)
+
+            clientsApi.setBearerToken(appProperties.xuiToken.trim())
+
+            val response = clientsApi.postPanelApiClientsIpsEmail(email.plus("@secret.com"))
+
+            if(response.status != 200) throw HttpException(response.body().msg)
+
+            if(response.body().obj is Unit || response.body().obj == null)
+                null
+            else
+                response.body().obj as List<String>?
+        } catch (e: Exception) {
+            logger.error(e.message, e)
+            null
         }
     }
 
@@ -376,20 +447,51 @@ class XUIManagerService(
         }
     }
 
-    suspend fun probeNode(nodeId: Int): ProbeResultUI? {
+    suspend fun addNode(node: AddNodeRequest): NodeView? {
+        return try {
+            val nodesApi = NodesApi(privateUrl)
+
+            nodesApi.setBearerToken(appProperties.xuiToken.trim())
+
+            val response = nodesApi.postPanelApiNodesAdd(node)
+
+            if(response.status != 200) throw HttpException(response.body().msg)
+
+            response.body().obj
+        } catch (e: Exception) {
+            logger.error(e.message, e)
+            null
+        }
+    }
+
+    suspend fun deleteNode(nodeId: Int): Any? {
         return try{
             val nodesApi = NodesApi(privateUrl)
 
             nodesApi.setBearerToken(appProperties.xuiToken.trim())
 
-            val response = nodesApi.postPanelApiNodesProbeId(nodeId)
+            val response = nodesApi.postPanelApiNodesDelId(nodeId)
 
             if(response.status != 200) throw HttpException(response.body().msg)
 
-            if(response.body().obj is Unit || response.body().obj == null)
-                null
-            else
-                response.body().obj as ProbeResultUI?
+            response.body().obj
+        } catch (e: Exception) {
+            logger.error(e.message, e)
+            null
+        }
+    }
+
+    suspend fun testNode(request: TestNodeRequest): ProbeResultUI? {
+        return try{
+            val nodesApi = NodesApi(privateUrl)
+
+            nodesApi.setBearerToken(appProperties.xuiToken.trim())
+
+            val response = nodesApi.postPanelApiNodesTest(request)
+
+            if(response.status != 200) throw HttpException(response.body().msg)
+
+            response.body().obj
         } catch (e: Exception) {
             logger.error(e.message, e)
             null

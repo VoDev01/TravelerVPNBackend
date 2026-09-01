@@ -6,6 +6,7 @@ import com.backend.travelervpn.generated.api.schema.ClientTraffic
 import com.backend.travelervpn.generated.api.schema.Inbound
 import com.backend.travelervpn.repository.VpnUserRepository
 import com.backend.travelervpn.repository.VpnUserRepositoryReactive
+import com.backend.travelervpn.service.GeoIpService
 import com.backend.travelervpn.service.VpnLinkExtractorService
 import com.backend.travelervpn.service.xui.XUIManagerService
 import com.backend.travelervpn.service.xui.XuiWebSocketData
@@ -22,6 +23,7 @@ import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.web.bind.annotation.*
 import tools.jackson.databind.ObjectMapper
+import java.security.CryptoPrimitive
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.*
@@ -42,6 +44,7 @@ class VpnController(
     private val vpnLinkExtractorService: VpnLinkExtractorService,
     private val messagingTemplate: SimpMessagingTemplate,
     private val objectMapper: ObjectMapper,
+    private val geoIpService: GeoIpService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private var wsSession: DefaultClientWebSocketSession? = null
@@ -202,6 +205,27 @@ class VpnController(
             val response = xuiManagerService.attachInbounds(userId, inbounds)
 
             VpnResponse(status = "success", response = response)
+        } catch (ex: Exception) {
+            log.error(ex.message, ex)
+            VpnResponse(status = "error", message = "Internal server error")
+        }
+    }
+
+    @PostMapping(path = ["/user/geo"])
+    suspend fun getUserLastGeo(email: String): VpnResponse {
+        return try {
+            val response = xuiManagerService.getClientIps(email)
+
+            if(response.isNullOrEmpty()) VpnResponse(status = "error", message = "Client doesnt have any ip logs")
+            else {
+                val geo = geoIpService.lookupIp(response.last())
+
+                if(geo === null) {
+                    VpnResponse(status = "error", message = "Ip not found")
+                } else {
+                    VpnResponse(status = "success", response = geo)
+                }
+            }
         } catch (ex: Exception) {
             log.error(ex.message, ex)
             VpnResponse(status = "error", message = "Internal server error")

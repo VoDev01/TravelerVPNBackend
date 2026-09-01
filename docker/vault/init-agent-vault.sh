@@ -4,7 +4,7 @@ set -e
 
 echo "[Init] Vault is ready. Generating AppRole credentials..."
 
-SECRET_FILE="/run/secrets/vault_secrets"
+SECRET_FILE="/run/secrets/app_secrets"
 
 if [ -f "$SECRET_FILE" ]; then
   set -a
@@ -13,6 +13,7 @@ if [ -f "$SECRET_FILE" ]; then
 
   export VAULT_ROLE_ID=$(echo -n "$VAULT_ROLE_ID" | tr -d '\r\n[:space:]')
   export VAULT_TOKEN=$(echo -n "$VAULT_TOKEN" | tr -d '\r\n[:space:]')
+  export VAULT_ADDR=$(echo -n "$VAULT_ADDR" | tr -d '\r\n[:space:]')
 else
     echo "\n[Error] Unable to get secrets. Is there some secret missing?"
     exit 1

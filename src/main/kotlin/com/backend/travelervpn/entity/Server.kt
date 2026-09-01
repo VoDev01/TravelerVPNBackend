@@ -9,4 +9,6 @@ data class Server(
     val id: Long,
     val name: String,
     val location: String,
+    val address: String,
+    val port: Int,
 )
