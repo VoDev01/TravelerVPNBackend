@@ -1,35 +1,99 @@
 ---
-- name: Deploy Spring Backend and connect to panel
-  hosts: backend
-  remote_user: root
+- name: Deploy server with terraform
+  hosts: localhost
   gather_facts: false
-  become: true
-  vars:
-    local_project_root: "{{ playbook_dir }}/../.."
-    project_path: /opt/traveler_vpn
 
   tasks:
-    - name: Deploy server with terraform
+    - name: Execute terraform
       community.general.terraform:
         project_path: "{{ local_project_root }}/terraform/"
         state: present
+        variables:
+          node_port: 62053
+          ssh_port: 22
+          serverspace_token: "{{ vault_serverspace_token }}"
       register: vless_node
+      when: vault_serverspace_token is defined
 
-    - name: Get ip-address
-      ansible.builtin.set_fact:
-        server_ip: "{{ vless_node.outputs.public_ip.value }}"
+    - name: Add ip to inventory
+      ansible.builtin.add_host:
+        name: "spring-backend"
+        ansible_host: "{{ vless_node.outputs.public_ip.value }}"
+        ansible_user: "root"
+      when: vless_node.outputs.public_ip.value is defined
+
+- name: Deploy Spring Backend
+  hosts: spring-backend
+  remote_user: root
+  gather_facts: true
+  become: true
+
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+    project_path: /opt/traveler_vpn
+    is_container: >
+      {{ ansible_facts['virtualization_type'] | default('') in ['docker', 'containerd']
+      or lookup('ansible.builtin.file', '/.dockerenv', errors='ignore') != '' }}
+
+  tasks:
+    - name: Install full Docker (For Real Production Server)
+      when: not is_container
+      block:
+        - name: Install Docker Script
+          ansible.builtin.get_url:
+            url: https://get.docker.com/
+            dest: /usr/bin/docker_install.sh
+            mode: "0755"
+
+        - name: Install Docker
+          ansible.builtin.command: docker_install.sh
+          changed_when: true
+
+        - name: Ensure Docker service is running and enabled
+          ansible.builtin.systemd:
+            name: docker
+            state: started
+            enabled: true
+
+    - name: Install Docker CLI only (For Molecule / Dev Container)
+      when: is_container
+      block:
+        - name: Prevent services from starting during apt install
+          ansible.builtin.copy:
+            content: "#!/bin/sh\nexit 101"
+            dest: /usr/sbin/policy-rc.d
+            mode: "0755"
+
+        - name: Install minimal Docker CLI and Compose plugin
+          ansible.builtin.apt:
+            name:
+              - docker.io
+              - docker-compose-v2
+            state: present
+            update_cache: true
+
+        - name: Remove policy-rc.d workaround
+          ansible.builtin.file:
+            path: /usr/sbin/policy-rc.d
+            state: absent
+
+        - name: Stop and disable local docker daemon inside Molecule container
+          ansible.builtin.systemd:
+            name: docker
+            state: stopped
+            enabled: false
 
     - name: Create project directory
       ansible.builtin.file:
         path: "{{ project_path }}"
         state: directory
-        mode: '0755'
+        mode: "0750"
 
     - name: Copy docker-compose files
       ansible.builtin.copy:
         src: "{{ item }}"
-        dest: "{{ project_path }}/{{ item }}"
-        mode: '0644'
+        dest: "{{ project_path }}/{{ item | ansible.builtin.basename }}"
+        mode: "0640"
       loop:
         - "{{ local_project_root }}/compose.yaml"
         - "{{ local_project_root }}/compose.prod.yaml"
@@ -41,11 +105,3 @@
           - compose.yaml
           - compose.prod.yaml
         state: present
-
-    - name: Open HTTPS incoming port
-      ansible.builtin.shell: |
-        sudo ufw allow 443
-      args:
-        executable: /bin/bash
-      changed_when: true
-      register: install_result

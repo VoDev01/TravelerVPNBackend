@@ -39,6 +39,6 @@ out/
 ### Kotlin ###
 .kotlin
 
-compose.prod.yaml
 .secrets
 .terraformrc
+.env

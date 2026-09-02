@@ -6,8 +6,8 @@
       user: "root"
       port: 22
       identity_file: ""
-      ansible_connection: community.docker.docker
-      ansible_user: root
+      connection: community.docker.docker
+      ansible_remote_tmp: "/tmp"
   with_items: "{{ server_jobs.results }}"
   register: instance_config_dict
 

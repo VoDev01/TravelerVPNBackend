@@ -1,7 +1,7 @@
 ---
 # Dependency management (download roles/collections)
 driver:
-  name: "docker"
+  name: default
 
 dependency:
   name: galaxy
@@ -12,19 +12,15 @@ dependency:
     requirements-file: requirements.yml
 
 platforms:
-  - name: 3x-node
-    image: ubuntu:22.04
-    connection: community.docker.docker
-    privileged: true
-    command: /lib/systemd/systemd
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+  - name: spring-backend
 
 ansible:
   cfg:
     defaults:
       host_key_checking: false
       verbosity: 1
+    ssh_connection:
+      pipelining: true
   env:
     ANSIBLE_FORCE_COLOR: "1"
     ANSIBLE_LOAD_CALLBACK_PLUGINS: "1"
@@ -51,7 +47,7 @@ ansible:
     verify: verify.yml
 
 scenario:
-  name: production
+  name: backend
   test_sequence:
     - dependency
     - cleanup

@@ -1,0 +1,12 @@
+---
+- name: Down the merged Docker Compose stack
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run docker compose down on all target files
+      community.docker.docker_compose_v2:
+        project_src: "{{ molecule_scenario_directory }}/../.."
+        files:
+          - compose.yaml
+          - compose.prod.yaml
+        state: absent

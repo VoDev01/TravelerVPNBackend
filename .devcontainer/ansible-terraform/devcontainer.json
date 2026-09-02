@@ -7,13 +7,18 @@
 		"seccomp=unconfined",
 		"--security-opt",
 		"label=disable",
-		"--cap-add=SYS_ADMIN",
-		"--cap-add=SYS_RESOURCE",
+		"--cap-add",
+		"SYS_ADMIN",
+		"--cap-add",
+		"SYS_RESOURCE",
 		"--device",
 		"/dev/fuse",
 		"--security-opt",
 		"apparmor=unconfined",
-		"--hostname=ansible-dev-container"
+		"--hostname",
+		"ansible-dev-container",
+		"--volume=/var/run/docker.sock:/var/run/docker.sock:rw",
+		"--volume=/sys/fs/cgroup:/sys/fs/cgroup:ro"
 	],
 	"mounts": [
 		{
@@ -22,6 +27,7 @@
 			"type": "bind"
 		}
 	],
+	"workspaceFolder": "/workspaces/travelervpn",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
 			"version": "latest",
@@ -34,7 +40,6 @@
 				"editor.formatOnPaste": false,
 				"editor.formatOnType": false,
 				"editor.formatOnSave": true,
-				"editor.formatOnSaveMode": "file",
 				"files.autoSave": "off",
 				"terminal.integrated.defaultProfile.linux": "bash",
 				"terraform.languageServer.pathToOpenTofuOrTerraform": "terraform",
@@ -50,14 +55,13 @@
 				"hashicorp.terraform",
 				"hashicorp.hcl",
 				"4ops.terraform",
-				"redhat.vscode-yaml",
+				"wholroyd.jinja",
 				"redhat.ansible",
-				"redhat.vscode-redhat-account",
-				"wholroyd.jinja"
+				"redhat.vscode-yaml",
+				"redhat.vscode-redhat-account"
 			]
 		}
 	},
-	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 	"postCreateCommand": {
 		"community modules": "ansible-galaxy collection install community.general community.docker",
 		"molecule": "pip install \"molecule\" \"molecule-plugins[docker]\""

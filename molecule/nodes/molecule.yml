@@ -1,0 +1,72 @@
+---
+driver:
+  name: docker
+dependency:
+  name: galaxy
+  options:
+    ignore-certs: false
+    ignore-errors: false
+    role-file: requirements.yml
+    requirements-file: requirements.yml
+
+platforms:
+  - name: 3x-node
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        xui_username: "test"
+        xui_password: "test123"
+        xui_port: "2552"
+
+ansible:
+  cfg:
+    defaults:
+      host_key_checking: false
+      verbosity: 1
+  env:
+    ANSIBLE_FORCE_COLOR: "1"
+    ANSIBLE_LOAD_CALLBACK_PLUGINS: "1"
+
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --diff
+        - --force-handlers
+      ansible_navigator:
+        - --mode stdout
+        - --pull-policy missing
+        - --execution-environment-image ghcr.io/ansible/community-ansible-dev-tools:latest
+
+  playbooks:
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+    cleanup: cleanup.yml
+    prepare: prepare.yml
+    side_effect: side_effect.yml
+    verify: verify.yml
+
+scenario:
+  name: production
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

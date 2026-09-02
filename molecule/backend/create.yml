@@ -1,0 +1,20 @@
+---
+- name: Up the existing Docker Compose stack
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run docker compose up
+      community.docker.docker_compose_v2:
+        project_src: "{{ molecule_scenario_directory }}/../.."
+        files:
+          - compose.yaml
+          - compose.prod.yaml
+        state: present
+      register: output
+
+    - name: Validate all services are running
+      ansible.builtin.assert:
+        that:
+          - "item.State == 'running'"
+        fail_msg: "Service {{ item.Name }} failed to start!"
+      loop: "{{ output.containers }}"

@@ -1,0 +1,45 @@
+services:
+  cassandra:
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_AUTHENTICATOR: PasswordAuthenticator
+      CASSANDRA_PASSWORD_SEEDER: "yes"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - vpn_network
+    secrets:
+      - app_secrets
+
+  vpn-backend:
+    ports:
+      - "8080:8080"
+    build:
+      context: .
+      dockerfile: docker/backend/prod/Dockerfile
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - vpn_network
+  
+  vault:
+    ports:
+      - "8200:8200"
+    networks:
+      - vpn_network
+
+  vault-agent:
+    networks:
+      - vpn_network
+
+networks:
+  vpn_network:
+    driver: bridge

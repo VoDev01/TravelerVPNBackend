@@ -1,0 +1,13 @@
+plugin: cloud.terraform.terraform_state
+project_path: "../terraform"
+
+hosts:
+  3x-nodes:
+    hosts: "{{ vless_node }}"
+    ansible_port: "{{ ssh_port }}"
+  3x-ui:
+    hosts: "{{ vless_node }}"
+    ansible_port: "{{ ssh_port }}"
+  spring-backend:
+    hosts: "{{ vless_node }}"
+    ansible_port: "{{ ssh_port }}"

@@ -30,14 +30,7 @@
       loop: "{{ nodes }}"
       register: node_creation_results
 
-    - name: "Generate reality keys for node_id: {{ target_node_id }}"
-      ansible.builtin.shell: |
-        set -o pipefail
-        /usr/local/x-ui/bin/xray x25519 | grep "Private key" | awk '{print $3}'
-      register: xray_priv_key_cmd
-      changed_when: false
-
-    - name: "Create inbounds for node_id: {{ target_node_id }}"
+    - name: "Create inbounds for node_id: {{ node_creation_results.obj.id }}"
       ansible.builtin.uri:
         url: "{{ xui_api_url }}/panel/api/inbounds/add"
         method: POST
@@ -45,11 +38,8 @@
         headers:
           Cookie: "{{ login_response.set_cookie }}"
           Content-Type: "application/json"
-        body: "{{ lookup('template', 'templates/vless_' ~ inbound.transport ~ '.json.j2') | from_json }}"
+        body: "{{ lookup('template', 'templates/vless_reality_xhttp.json.j2') | from_json }}"
         status_code: 200
-      vars:
-        inbound: "{{ item }}"
-        generated_private_key: "{{ xray_priv_key_cmd.stdout | trim }}"
-      loop: "{{ node_inbounds }}"
+      loop: "{{ node_creation_results.obj }}"
       loop_control:
-        label: "Inbound: {{ item.remark }} ({{ item.transport }})"
+        label: "{{ item.remark }} ({{ item.transport }})"

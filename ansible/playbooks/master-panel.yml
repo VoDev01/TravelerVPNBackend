@@ -1,48 +1,99 @@
 ---
-- name: Deploy 3x-ui Master-Panel
-  hosts: 3x-node
-  remote_user: root
+- name: Deploy panel with terraform
+  hosts: localhost
   gather_facts: false
-  become: true
+
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
 
   tasks:
-    - name: Deploy server with terraform
+    - name: Execute terraform
       community.general.terraform:
         project_path: "{{ local_project_root }}/terraform/"
         state: present
+        variables:
+          node_port: 62053
+          ssh_port: 9432
+          serverspace_token: "{{ vault_serverspace_token }}"
       register: vless_node
+      when: vault_serverspace_token is defined
 
-    - name: Get ip-address
-      ansible.builtin.set_fact:
-        server_ip: "{{ vless_node.outputs.public_ip.value }}"
+    - name: Add ip to inventory
+      ansible.builtin.add_host:
+        name: "3x-node"
+        ansible_host: "{{ vless_node.outputs.public_ip.value }}"
+        ansible_user: "root"
+      when: vless_node.outputs.public_ip.value is defined
 
-    - name: Install curl and python
+- name: Install 3x-ui Node and TLS certificate
+  hosts: 3x-node
+  remote_user: root
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Install curl
       ansible.builtin.apt:
         name:
           - curl
-          - python3
-          - python3-pip
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Install pexpect
+      ansible.builtin.pip:
+        name: pexpect
         state: present
 
-    - name: Clone and Run 3x-ui Backend Installer
-      ansible.builtin.shell: |
-        set -o pipefail
-        sudo curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh | bash
-      args:
-        executable: /bin/bash
+    - name: Check if 3x-ui is already installed
+      ansible.builtin.stat:
+        path: /usr/bin/install_3x_ui.sh
+      register: x_ui_binary
+
+    - name: Download 3x-ui installer script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/MHSanaei/3x-ui/main/install.sh
+        dest: /usr/bin/install_3x_ui.sh
+        mode: "0755"
+      when: not x_ui_binary.stat.exists
+
+    - name: Install 3x-ui
+      ansible.builtin.command: install_3x_ui.sh
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+        XUI_NONINTERACTIVE: "1"
+        XUI_PORT: "{{ xui_port }}"
+        XUI_USERNAME: "{{ xui_username }}"
+        XUI_PASSWORD: "{{ xui_password }}"
+        XUI_SSL_MODE: "none"
       changed_when: true
-      register: install_result
+
+    - name: Ensure 3x-ui service is running
+      ansible.builtin.systemd:
+        name: x-ui
+        state: started
+        enabled: true
+      changed_when: true
 
     - name: Install tls certificate
       ansible.builtin.expect:
-        command: sudo x-ui
+        command: x-ui
+        timeout: 60
         responses:
-          "Please enter your selection [0-28]:": "20"
-          "Choose an option:": "6"
-          "Do you want to proceed? [Default y]:": "y"
-          "Is {{ansible_default_ipv4.address}} the correct incoming public IPv4 address for this server? [Default y]:": "y"
-          "Do you have an IPv6 address to include? (leave empty to skip):": ""
-          "Port to use for ACME HTTP-01 listener (default 80):": "80"
+          (?i)selection.*0-28: "20"
+          (?i)choose an option: "6"
+          (?i)proceed: "y"
+          (?i)correct incoming public: "y"
+          (?i)ipv6: ""
+          (?i)port: "80"
         echo: true
+
+    - name: Read remote 3x-ui credentials
+      ansible.builtin.slurp:
+        src: /etc/x-ui/install-result.env
+      register: remote_file
+
+    - name: Print 3x-ui credentials
+      ansible.builtin.debug:
+        msg: "{{ remote_file['content'] | b64decode }}"

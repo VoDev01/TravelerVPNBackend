@@ -17,7 +17,11 @@
         name: "{{ item.name }}"
         image: "{{ item.image | default('ubuntu:latest') }}"
         state: started
-        command: sleep infinity
+        privileged: "{{ item.privileged | default(false) }}"
+        volumes: "{{ item.volumes | default(omit) }}"
+        command: "{{ item.command | default(omit) }}"
+        tmpfs: "{{ item.tmpfs | default(omit) }}"
+        cgroupns_mode: host
       loop: "{{ molecule_yml.platforms }}"
       register: server_jobs
       notify:
