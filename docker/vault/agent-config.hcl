@@ -16,5 +16,6 @@ auto_auth {
     config = {
       path = "/vault/secrets/vault-token"
     }
+    mode = 0640
   }
 }

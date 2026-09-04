@@ -1,11 +1,34 @@
 ---
 - name: Up the existing Docker Compose stack
   hosts: localhost
+  connection: local
   gather_facts: false
+
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+    remote_project_root: "/opt/travelervpn"
+
   tasks:
-    - name: Run docker compose up
+    - name: Ensure rsync is installed
+      ansible.builtin.package:
+        name: rsync
+        state: present
+
+    - name: Create project directory
+      ansible.builtin.file:
+        path: "{{ remote_project_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Sync project directory
+      ansible.posix.synchronize:
+        src: "{{ local_project_root }}"
+        dest: "{{ remote_project_root }}"
+        delete: true
+
+    - name: Deploy docker-compose project
       community.docker.docker_compose_v2:
-        project_src: "{{ molecule_scenario_directory }}/../.."
+        project_src: "{{ remote_project_root }}"
         files:
           - compose.yaml
           - compose.prod.yaml

@@ -6,11 +6,10 @@ spring:
   marzbanUsername: ${marzbanUsername}
   marzbanPassword: ${marzbanPassword}
   xuiToken: ${xuiToken}
-  xuiSecretPath: ${xuiSecretPath}
   xuiUsername: ${xuiUsername}
   xuiPassword: ${xuiPassword}
-  xuiPrivateUrl: "http://host.docker.internal:56832"
-  xuiSubUrl: "http://host.docker.internal:2096/sub"
+  xuiAccessUrl: ${xuiAccessUrl}
+  xuiSubUrl: ${xuiSubUrl}
 
   config:
     import: "vault://"

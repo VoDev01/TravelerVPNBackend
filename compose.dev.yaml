@@ -21,7 +21,6 @@ services:
       dockerfile: docker/backend/dev/Dockerfile
     environment:
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
-    entrypoint: ["init.sh"]
     command: ["./gradlew", "bootRun"]
     develop:
       watch:
@@ -31,9 +30,6 @@ services:
         - action: sync+restart
           path: ./build.gradle.kts
           target: /app/build.gradle.kts
-    volumes:
-      - vault-shared:/vault/secrets/
-      - ./docker/backend/init.sh:/usr/local/bin/init.sh
     restart: always
     networks:
       - vpn_network
@@ -53,8 +49,6 @@ services:
       "-c",
       "init.sh & exec vault server -dev -dev-listen-address=0.0.0.0:8200"
     ]
-    volumes:
-      - ./docker/vault/init-vault.sh:/usr/local/bin/init.sh
     ports:
       - "8200:8200"
 
@@ -63,8 +57,6 @@ services:
       VAULT_ADDR: "http://vault:8200"
     networks:
       - vpn_network
-    volumes:
-      - vault-shared:/vault/secrets
     restart: always
 
 networks:

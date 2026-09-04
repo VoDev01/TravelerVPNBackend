@@ -94,6 +94,6 @@
         src: /etc/x-ui/install-result.env
       register: remote_file
 
-    - name: Print 3x-ui credentials
+    - name: Set 3x-ui credentials
       ansible.builtin.debug:
         msg: "{{ remote_file['content'] | b64decode }}"

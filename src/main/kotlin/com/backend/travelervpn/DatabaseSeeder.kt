@@ -13,14 +13,16 @@ class DatabaseSeeder(private val vpnUserRepository: VpnUserRepository) : Command
         if (vpnUserRepository.count() == 0L) {
             val datePrefix = OffsetDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyMMdd"))
-            val shortUuid = UUID.randomUUID().toString()
+            val uuid = UUID.randomUUID()
+            val shortUuid = uuid.toString()
                 .replace("-", "").take(6)
 
             val username = "vpn_${datePrefix}_$shortUuid"
 
             val client = VpnUser(
-                userId = UUID.randomUUID(),
+                userId = uuid,
                 username = username,
+                email = uuid.toString().plus("@secret.com")
             )
             vpnUserRepository.save(client)
             println("Database successfully seeded!")

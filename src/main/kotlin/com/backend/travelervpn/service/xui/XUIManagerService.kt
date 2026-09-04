@@ -23,7 +23,7 @@ class XUIManagerService(
 ) {
     val subUrl = appProperties.xuiSubUrl
 
-    private val privateUrl = "${appProperties.xuiPrivateUrl}/${appProperties.xuiSecretPath}"
+    private val privateUrl = "${appProperties.xuiAccessUrl}"
     private val logger = LoggerFactory.getLogger(this::class.java)
     private val sharedCookiesStorage = AcceptAllCookiesStorage()
     private val wsClient = HttpClient {
@@ -253,6 +253,14 @@ class XUIManagerService(
                     id = newClient.id ?: client.id,
                     email = newClient.email ?: client.email,
                     comment = newClient.comment ?: client.comment,
+                    enable = newClient.enable ?: client.enable,
+                    expiryTime = newClient.expiryTime ?: client.expiryTime,
+                    limitIp = newClient.limitIp ?: client.limitIp,
+                    reset = newClient.reset ?: client.reset,
+                    security = newClient.security ?: client.security,
+                    subId = newClient.subId ?: client.subId,
+                    tgId = newClient.tgId ?: client.tgId,
+                    totalGB = newClient.totalGB ?: client.totalGB,
                 )
                 val response = clientsApi.postPanelApiClientsUpdateEmail(email.plus("@secret.com"), newClient)
                 if(response.status != 200) throw HttpException(response.body().msg)

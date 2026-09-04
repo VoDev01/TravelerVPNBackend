@@ -6,9 +6,6 @@ services:
       CASSANDRA_DC: datacenter1
       CASSANDRA_ENDPOINT_SNITCH: SimpleSnitch
       CASSANDRA_RPC_ADDRESS: 0.0.0.0
-    volumes:
-      - cassandra_data:/var/lib/cassandra
-      - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
     command: ["/bin/sh", "-c", "init.sh & docker-entrypoint.sh cassandra -f"]
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'describe cluster' || exit 1"]
@@ -19,9 +16,14 @@ services:
     restart: always
     secrets:
       - app_secrets
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
 
   vpn-backend:
-    image: traveler_vpn:latest
+    image: vodev1405/traveler_vpn_backend:latest
+    user: "spring:vault"
+    entrypoint: ["init.sh"]
     environment:
       FLYWAY_NATIVE_CONNECTORS: true
     depends_on:
@@ -30,14 +32,18 @@ services:
       vault-agent:
         condition: service_healthy
     restart: always
+    volumes:
+      - vault-shared:/vault/secrets
+      - ./docker/backend/init.sh:/usr/local/bin/init.sh
 
   vault:
-    image: hashicorp/vault:2.0.3
-    volumes:
-      - vault-data:/vault/data
-      - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
-      - ./docker/vault/init-vault.sh:/usr/local/bin/init-vault.sh
+    build:
+      context: .
+      dockerfile: ./docker/vault/Dockerfile
     restart: always
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_SKIP_VERIFY: true
     healthcheck:
       test: ["CMD", "sh", "-c", "vault status"]
       interval: 10s
@@ -47,6 +53,10 @@ services:
     secrets:
       - spring-app-policy
       - app_secrets
+    volumes:
+      - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
+      - ./docker/vault/init-vault.sh:/usr/local/bin/init.sh
+      - vault-shared:/vault/secrets
 
   vault-agent-init:
     image: alpine:latest
@@ -57,18 +67,16 @@ services:
 
   vault-agent:
     image: hashicorp/vault:2.0.3
-    working_dir: /vault
-    volumes:
-      - vault-agent-data:/vault/data
-      - ./docker/vault/agent-config.hcl:/vault/agent-config.hcl:ro
-      - ./docker/vault/init-agent-vault.sh:/usr/local/bin/init.sh
+    working_dir: /vault    
+    environment:
+      VAULT_ADDR: http://vault:8200
     depends_on:
       vault:
         condition: "service_healthy"
       vault-agent-init:
         condition: "service_completed_successfully"
     command:
-      ["/bin/sh", "-c", "init.sh && vault agent -config=/vault/agent-config.hcl"]
+      ["/bin/sh", "-c", "init.sh && vault agent -config=/vault/config/agent-config.hcl"]
     restart: always
     healthcheck:
       test: ["CMD", "sh", "-c", "test -s /vault/secrets/vault-token"]
@@ -78,6 +86,10 @@ services:
       start_period: 2s
     secrets:
       - app_secrets
+    volumes:
+      - ./docker/vault/agent-config.hcl:/vault/config/agent-config.hcl:ro
+      - ./docker/vault/init-agent-vault.sh:/usr/local/bin/init.sh
+      - vault-shared:/vault/secrets
 
 secrets:
   spring-app-policy:
@@ -91,6 +103,5 @@ volumes:
     driver_opts:
       type: tmpfs
       device: tmpfs
+      mode: 750
   cassandra_data:
-  vault-data:
-  vault-agent-data:

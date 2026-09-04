@@ -1,7 +1,9 @@
 ---
 - name: Down the merged Docker Compose stack
   hosts: localhost
+  connection: local
   gather_facts: false
+
   tasks:
     - name: Run docker compose down on all target files
       community.docker.docker_compose_v2:

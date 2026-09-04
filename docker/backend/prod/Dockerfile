@@ -11,10 +11,12 @@ RUN ./gradlew bootJar --no-daemon -Pproduction
 FROM amazoncorretto:24-headless
 WORKDIR /app
 
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
-RUN find . -type f -exec chown spring:spring {} + && \
-    find . -type d -exec chown spring:spring {} +
+RUN dnf install -y shadow-utils
+
+RUN groupadd -r vault && useradd -r spring -g vault && \
+chown -R spring:vault .
+
+USER spring:vault
 
 COPY --from=builder /app/build/libs/*-plain.jar app.jar
 

@@ -95,6 +95,7 @@ class MarzbanManagerService(
                 VpnUser(
                     userId = vlessId,
                     username = username,
+                    email = vlessId.toString().plus("@secret.com"),
                     connectionLinks = connectionLinks.toSet()
                 )
             )

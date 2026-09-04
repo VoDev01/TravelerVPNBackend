@@ -10,10 +10,6 @@ import org.springframework.validation.annotation.Validated
 @Validated
 class AppProperties {
     @NotNull
-    lateinit var realityPublicKey: String
-    @NotNull
-    lateinit var realityShortId: String
-    @NotNull
     lateinit var serverIp: String
     @NotNull
     lateinit var maskDomain: String
@@ -24,13 +20,11 @@ class AppProperties {
     @NotNull
     lateinit var xuiToken: String
     @NotNull
-    lateinit var xuiSecretPath: String
-    @NotNull
     lateinit var xuiUsername: String
     @NotNull
     lateinit var xuiPassword: String
     @NotNull
-    lateinit var xuiPrivateUrl: String
+    lateinit var xuiAccessUrl: String
     @NotNull
     lateinit var xuiSubUrl: String
 }

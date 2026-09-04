@@ -27,12 +27,13 @@
 			"type": "bind"
 		}
 	],
-	"workspaceFolder": "/workspaces/travelervpn",
+	"workspaceFolder": "/opt/${localWorkspaceFolderBasename}",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/opt/${localWorkspaceFolderBasename},type=bind",
+	"privileged": true,
 	"features": {
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-			"version": "latest",
-			"enableNonRootDocker": true
-		}
+		"ghcr.io/devcontainers/features/docker-in-docker:latest": {
+            "dockerDashComposeVersion": "v2"
+        }
 	},
 	"customizations": {
 		"vscode": {
@@ -63,7 +64,8 @@
 		}
 	},
 	"postCreateCommand": {
-		"community modules": "ansible-galaxy collection install community.general community.docker",
-		"molecule": "pip install \"molecule\" \"molecule-plugins[docker]\""
+		"community modules": "ansible-galaxy collection install community.general community.docker ansible.posix",
+		"molecule": "pip install \"molecule\" \"molecule-plugins[docker]\"",
+		"rsync": "apt-get update && apt-get install -y rsync"
 	}
 }

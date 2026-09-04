@@ -22,6 +22,8 @@
         command: "{{ item.command | default(omit) }}"
         tmpfs: "{{ item.tmpfs | default(omit) }}"
         cgroupns_mode: host
+        ports:
+          - "8080"
       loop: "{{ molecule_yml.platforms }}"
       register: server_jobs
       notify:

@@ -30,13 +30,13 @@
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
-    project_path: /opt/traveler_vpn
+    remote_project_root: "/opt/travelervpn"
     is_container: >
       {{ ansible_facts['virtualization_type'] | default('') in ['docker', 'containerd']
       or lookup('ansible.builtin.file', '/.dockerenv', errors='ignore') != '' }}
 
   tasks:
-    - name: Install full Docker (For Real Production Server)
+    - name: Full docker install
       when: not is_container
       block:
         - name: Install Docker Script
@@ -55,52 +55,54 @@
             state: started
             enabled: true
 
-    - name: Install Docker CLI only (For Molecule / Dev Container)
+    - name: Install docker cli
       when: is_container
       block:
-        - name: Prevent services from starting during apt install
-          ansible.builtin.copy:
-            content: "#!/bin/sh\nexit 101"
-            dest: /usr/sbin/policy-rc.d
+        - name: Create keyrings directory
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
             mode: "0755"
 
-        - name: Install minimal Docker CLI and Compose plugin
-          ansible.builtin.apt:
-            name:
-              - docker.io
-              - docker-compose-v2
+        - name: Download Docker GPG key
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: "0444"
+
+        - name: Add Docker repository to apt
+          ansible.builtin.apt_repository:
+            repo: "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            filename: docker
             state: present
             update_cache: true
 
-        - name: Remove policy-rc.d workaround
-          ansible.builtin.file:
-            path: /usr/sbin/policy-rc.d
-            state: absent
+        - name: Install docker cli
+          ansible.builtin.apt:
+            name: docker-ce-cli
+            state: present
+            update_cache: true
 
-        - name: Stop and disable local docker daemon inside Molecule container
-          ansible.builtin.systemd:
-            name: docker
-            state: stopped
-            enabled: false
+    - name: Ensure rsync is installed
+      ansible.builtin.apt:
+        name: rsync
+        state: present
+        update_cache: true
 
     - name: Create project directory
       ansible.builtin.file:
-        path: "{{ project_path }}"
+        path: "{{ remote_project_root }}"
         state: directory
-        mode: "0750"
+        mode: "0755"
 
-    - name: Copy docker-compose files
-      ansible.builtin.copy:
-        src: "{{ item }}"
-        dest: "{{ project_path }}/{{ item | ansible.builtin.basename }}"
-        mode: "0640"
-      loop:
-        - "{{ local_project_root }}/compose.yaml"
-        - "{{ local_project_root }}/compose.prod.yaml"
+    - name: Sync project directory
+      ansible.posix.synchronize:
+        src: "{{ local_project_root }}"
+        dest: "{{ remote_project_root }}"
 
     - name: Deploy docker-compose project
       community.docker.docker_compose_v2:
-        project_src: "{{ project_path }}"
+        project_src: "{{ remote_project_root }}"
         files:
           - compose.yaml
           - compose.prod.yaml

@@ -1,7 +1,7 @@
 services:
   cassandra:
     ports:
-      - "9042:9042"
+      - "127.0.0.1:9042:9042"
     environment:
       CASSANDRA_AUTHENTICATOR: PasswordAuthenticator
       CASSANDRA_PASSWORD_SEEDER: "yes"
@@ -32,7 +32,12 @@ services:
   
   vault:
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"
+    command: [
+      "/bin/sh",
+      "-c",
+      "init.sh & exec vault server -config=/vault/config/config.hcl"
+    ]
     networks:
       - vpn_network
 
