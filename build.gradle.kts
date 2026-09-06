@@ -114,7 +114,7 @@ val fixKtorInternalApiTask = tasks.register("fixKtorInternalApi") {
                             "import io.ktor.utils.io.InternalAPI"
                         )
                         file.writeText(content)
-                        logger.lifecycle("Исправлен импорт InternalAPI в файле: ${file.name}")
+                        logger.lifecycle("Fixed InternalAPI import in file: ${file.name}")
                     }
                 }
             }

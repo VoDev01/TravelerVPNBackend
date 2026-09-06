@@ -1,7 +1,0 @@
----
-# Purpose: bring the instance to the desired state by running the role under test.
-# Molecule calls this playbook with `molecule converge`.
-- name: Converge Nodes Creation
-  ansible.builtin.import_playbook: "../nodes/converge.yml"
-- name: Conver adding new inbound connection
-  ansible.builtin.import_playbook: "../../ansible/playbooks/add-node-inbound.yml"

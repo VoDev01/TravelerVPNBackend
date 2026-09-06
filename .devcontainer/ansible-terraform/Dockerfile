@@ -29,4 +29,4 @@ RUN python3 -m venv /opt/venv && \
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-CMD ["/bin/bash"]
+ENTRYPOINT ["/bin/bash", "-c", "source /opt/venv/bin/activate && exec \"$@\""]

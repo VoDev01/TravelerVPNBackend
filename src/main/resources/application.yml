@@ -41,8 +41,8 @@ spring:
   cloud:
     vault:
       uri: http://vault:8200
-      authentication: TOKEN
-      token: ${VAULT_TOKEN}
+      authentication: TOKEN-FILE
+      token-file: file:/vault/sercrets/vault-token
       fail-fast: true
       kv:
         enabled: true

@@ -25,7 +25,7 @@ if [ -f "$SECRET_FILE" ]; then
     source "$SECRET_FILE"
     set +a
 
-    if !$DEV_MODE; then
+    if ! $DEV_MODE; then
         export VAULT_ROLE_ID=$(echo -n "$VAULT_ROLE_ID" | tr -d '\r\n[:space:]')
 
         INIT_OUT=$(vault operator init -key-shares=$KEY_SHARES -key-threshold=$KEY_THRESHOLD -format=json 2>/dev/null)
@@ -42,7 +42,7 @@ if [ -f "$SECRET_FILE" ]; then
 
     echo "[Info] Unsealing Vault..."
 
-    if !$DEV_MODE; then
+    if ! $DEV_MODE; then
         i=0
 
         THRESHOLD=$(echo "$INIT_OUT" | jq -r '.unseal_threshold')
