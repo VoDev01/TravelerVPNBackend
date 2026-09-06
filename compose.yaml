@@ -21,7 +21,7 @@ services:
       - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
 
   vpn-backend:
-    entrypoint: ["/bin/sh", "-c", "init.sh"]
+    entrypoint: ["init.sh"]
     environment:
       FLYWAY_NATIVE_CONNECTORS: true
     depends_on:
@@ -39,11 +39,12 @@ services:
       context: .
       dockerfile: ./docker/vault/Dockerfile
     restart: always
-    command: [
-      "/bin/sh",
-      "-c",
-      "init.sh & vault server -config=/vault/config/config.hcl"
-    ]
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "init.sh & vault server -config=/vault/config/config.hcl",
+      ]
     environment:
       VAULT_ADDR: http://127.0.0.1:8200
       VAULT_SKIP_VERIFY: true
@@ -71,7 +72,7 @@ services:
 
   vault-agent:
     image: hashicorp/vault:latest
-    working_dir: /vault    
+    working_dir: /vault
     environment:
       VAULT_ADDR: http://vault:8200
     depends_on:
@@ -80,7 +81,11 @@ services:
       vault-agent-init:
         condition: "service_completed_successfully"
     command:
-      ["/bin/sh", "-c", "init.sh && vault agent -config=/vault/config/agent-config.hcl"]
+      [
+        "/bin/sh",
+        "-c",
+        "init.sh & vault agent -config=/vault/config/agent-config.hcl",
+      ]
     restart: always
     healthcheck:
       test: ["CMD", "sh", "-c", "test -s /vault/secrets/vault-token"]
@@ -101,7 +106,6 @@ secrets:
     file: ./docker/vault/spring-app-policy.hcl
   app_secrets:
     file: ./.secrets
-
 
 volumes:
   vault-shared:

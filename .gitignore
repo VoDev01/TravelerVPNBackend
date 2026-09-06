@@ -42,3 +42,5 @@ out/
 .secrets
 .terraformrc
 .env
+.VSCodeCounter
+*.mmdb

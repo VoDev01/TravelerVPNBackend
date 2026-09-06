@@ -1,22 +1,19 @@
 package com.backend.travelervpn.config
 
 import com.maxmind.db.CHMCache
-import com.maxmind.geoip2.DatabaseReader
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ResourceLoader
-import java.io.InputStream
+import java.io.File
 
 @Configuration
 class GeoIpConfig(private val resourceLoader: ResourceLoader) {
 
     @Bean
-    fun databaseReader(): DatabaseReader {
-        val resource = resourceLoader.getResource("classpath:maxmind/GeoLite2-City.mmdb")
-        val inputStream: InputStream = resource.inputStream
+    fun geoIpCache(): CHMCache = CHMCache()
 
-        return DatabaseReader.Builder(inputStream)
-            .withCache(CHMCache()) // Enables concurrent caching for faster lookups
-            .build()
+    fun getDefaultDatabaseFile(): File {
+        val resource = resourceLoader.getResource("classpath:maxmind/GeoLite2-City.mmdb")
+        return resource.file
     }
 }

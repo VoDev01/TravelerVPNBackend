@@ -23,15 +23,22 @@ locals {
   vault_secrets = jsondecode(file("secrets.json"))
 }
 
-variable "cassandra_user" {}
-variable "cassandra_password" {}
-variable "marzban_username" {}
-variable "marzban_password" {}
-variable "xui_api_token" {}
-variable "xui_access_url" {}
-variable "xui_sub_url" {}
-variable "xui_username" {}
-variable "xui_password" {}
+variable "cassandra_user" {
+  type = string
+}
+variable "cassandra_password" {
+  type = string
+}
+variable "xui_username" {
+  type = string
+}
+variable "xui_password" {
+  type = string
+}
+variable "serverspace_token" {
+  type = string
+  sensitive   = true
+}
 
 resource "vault_approle_auth_method_role" "spring" {
   mount_path          = "auth/approle"
@@ -56,13 +63,9 @@ resource "vault_kv_secret_v2" "app_secrets" {
   data_json = jsonencode({
     cassandraUser           = var.cassandra_user
     cassandraPassword       = var.cassandra_password
-    marzbanUsername         = var.marzban_username
-    marzbanPassword         = var.marzban_password
-    xuiToken                 = var.xui_api_token
-    xuiAccessUrl             = var.xui_access_url
-    xuiSubUrl                = var.xui_sub_url
     xuiUsername              = var.xui_username
     xuiPassword              = var.xui_password
+    serverspace_token        = var.serverspace_token
   })
 
   depends_on           = [vault_policy.spring]
