@@ -29,6 +29,4 @@ RUN python3 -m venv /opt/venv && \
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-WORKDIR /workspace
-
 CMD ["/bin/bash"]

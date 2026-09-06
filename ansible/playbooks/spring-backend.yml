@@ -9,8 +9,8 @@
         project_path: "{{ local_project_root }}/terraform/"
         state: present
         variables:
-          node_port: 62053
-          ssh_port: 22
+          node_port: "{{ 65535 | random(start=1024) }}"
+          ssh_port: "{{ 65535 | random(start=1024) }}"
           serverspace_token: "{{ vault_serverspace_token }}"
       register: vless_node
       when: vault_serverspace_token is defined
@@ -94,11 +94,45 @@
         path: "{{ remote_project_root }}"
         state: directory
         mode: "0755"
+        owner: 100
+        group: 1000
 
-    - name: Sync project directory
-      ansible.posix.synchronize:
-        src: "{{ local_project_root }}"
+    - name: Copy docker directory
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/docker/"
+        dest: "{{ remote_project_root }}/docker"
+        mode: "0740"
+        directory_mode: "0750"
+        owner: 100
+        group: 1000
+      no_log: true
+
+    - name: Copy .secrets
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/.secrets"
         dest: "{{ remote_project_root }}"
+        mode: "440"
+        owner: 100
+        group: 1000
+      no_log: true
+
+    - name: Copy main compose
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/compose.yaml"
+        dest: "{{ remote_project_root }}"
+        mode: "440"
+        owner: 100
+        group: 1000
+      no_log: true
+
+    - name: Copy prod compose
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/compose.prod.yaml"
+        dest: "{{ remote_project_root }}"
+        mode: "440"
+        owner: 100
+        group: 1000
+      no_log: true
 
     - name: Deploy docker-compose project
       community.docker.docker_compose_v2:

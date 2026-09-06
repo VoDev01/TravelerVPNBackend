@@ -1,8 +1,8 @@
 #!/bin/sh
 
-set -e
+set -euo pipefail
 
-echo -e "\n[Info] Waiting for Vault API..."
+echo "\n[Info] Waiting for Vault API..."
 
 while ! nc -z 127.0.0.1 8200; do
     printf '.'
@@ -11,47 +11,56 @@ done
 
 sleep 2
 
-echo -e "\n[Info] Vault API is listeting. Initializing vault..."
+echo "[Info] Vault API is listeting. Initializing vault..."
 
-SECRET_FILE="/run/secrets/app_secrets"
+SECRET_FILE="/vault/secrets/app_secrets.txt"
+
 KEY_SHARES=1
 KEY_THRESHOLD=1
+
+DEV_MODE=false
 
 if [ -f "$SECRET_FILE" ]; then
     set -a
     source "$SECRET_FILE"
     set +a
 
-    export VAULT_ROLE_ID=$(echo -n "$VAULT_ROLE_ID" | tr -d '\r\n[:space:]')
+    if !$DEV_MODE; then
+        export VAULT_ROLE_ID=$(echo -n "$VAULT_ROLE_ID" | tr -d '\r\n[:space:]')
 
-    INIT_OUT=$(vault operator init -key-shares=$KEY_SHARES -key-threshold=$KEY_THRESHOLD -format=json 2>/dev/null)
+        INIT_OUT=$(vault operator init -key-shares=$KEY_SHARES -key-threshold=$KEY_THRESHOLD -format=json 2>/dev/null)
 
-    if [ $? -ne 0 ] || [ -z "$INIT_OUT" ]; then
-        echo "[Error] Vault is already initialized or failed to init."
-        exit 1
+        if [ $? -ne 0 ] || [ -z "$INIT_OUT" ]; then
+            echo "[Error] Vault is already initialized or failed to init."
+            exit 1
+        fi
+
+        export VAULT_TOKEN=$(echo "$INIT_OUT" | jq -r '.root_token')
+    else
+        export VAULT_TOKEN="root"
     fi
-
-    export VAULT_TOKEN=$(echo "$INIT_OUT" | jq -r '.root_token')
 
     echo "[Info] Unsealing Vault..."
 
-    i=0
+    if !$DEV_MODE; then
+        i=0
 
-    THRESHOLD=$(echo "$INIT_OUT" | jq -r '.unseal_threshold')
+        THRESHOLD=$(echo "$INIT_OUT" | jq -r '.unseal_threshold')
 
-    while [ "$i" -lt "$THRESHOLD" ]; do
-        echo "[Info] Input key $((i+1)) out of $THRESHOLD..."
+        while [ "$i" -lt "$THRESHOLD" ]; do
+            echo "[Info] Input key $((i+1)) out of $THRESHOLD..."
 
-        CURRENT_KEY=$(echo "$INIT_OUT" | jq -r ".unseal_keys_b64[$i]")
-        
-        vault operator unseal "$CURRENT_KEY" > /dev/null
-        
-        if [ $? -ne 0 ]; then
-            echo "[Error] inputting key $((i+1))!"
-            exit 1
-        fi
-        i=$((i + 1))
-    done
+            CURRENT_KEY=$(echo "$INIT_OUT" | jq -r ".unseal_keys_b64[$i]")
+            
+            vault operator unseal "$CURRENT_KEY" > /dev/null
+            
+            if [ $? -ne 0 ]; then
+                echo "[Error] inputting key $((i+1))!"
+                exit 1
+            fi
+            i=$((i + 1))
+        done
+    fi
 
     echo "[Info] Vault unsealed!"
 
@@ -70,11 +79,11 @@ if [ -f "$SECRET_FILE" ]; then
         xuiUsername=$XUI_USERNAME \
         xuiPassword=$XUI_PASSWORD
 else
-    echo "\n[Error] Unable to write secrets. Is there some secret missing?"
+    echo "[Error] Unable to write secrets. Is there some secret missing?"
     exit 1
 fi
 
-echo -e "\n[Info] Secrets written. Enabling authentication and adding roles..."
+echo "[Info] Secrets written. Enabling authentication and adding roles..."
 
 vault auth enable approle
 
@@ -95,5 +104,5 @@ CLEAN_TOKEN=$(echo "$WRAPPED_TOKEN" | tr -d '\r\n[:space:]')
 echo -n "$VAULT_ROLE_ID" > /vault/secrets/roleID
 echo -n "$CLEAN_TOKEN" > /vault/secrets/wrappedSecretID
 
-echo -e "\n[Info] Vault is successfully provisioned."
+echo "[Info] Vault is successfully provisioned."
 exit 0

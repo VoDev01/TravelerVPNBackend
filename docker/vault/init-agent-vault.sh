@@ -1,10 +1,10 @@
 #!/bin/sh
 
-set -e
+set -euo pipefail
 
 echo "[Init] Using role-id for vault-agent"
 
-SECRET_FILE="/run/secrets/app_secrets"
+SECRET_FILE="/vault/secrets/app_secrets.txt"
 
 if [ -f "$SECRET_FILE" ]; then
   set -a

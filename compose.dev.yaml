@@ -18,7 +18,7 @@ services:
       - "8080:8080"
     build:
       context: .
-      dockerfile: docker/backend/dev/Dockerfile
+      dockerfile: ./docker/backend/dev/Dockerfile
     environment:
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
     command: ["./gradlew", "bootRun"]
@@ -37,6 +37,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   vault:
+    user: root
     networks:
       - vpn_network
     restart: always
@@ -44,17 +45,21 @@ services:
       VAULT_ADDR: "http://127.0.0.1:8200"
       API_ADDR: "http://127.0.0.1:8200"
       VAULT_DEV_ROOT_TOKEN_ID: "root"
+      VAULT_ROLE_ID: dev
+      DEV_MODE: true
     command: [
       "/bin/sh",
       "-c",
-      "init.sh & exec vault server -dev -dev-listen-address=0.0.0.0:8200"
+      "init.sh & vault server -dev -dev-listen-address=0.0.0.0:8200"
     ]
     ports:
       - "8200:8200"
 
   vault-agent:
+    user: root
     environment:
       VAULT_ADDR: "http://vault:8200"
+      VAULT_ROLE_ID: dev
     networks:
       - vpn_network
     restart: always

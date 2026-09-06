@@ -21,9 +21,7 @@ services:
       - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
 
   vpn-backend:
-    image: vodev1405/traveler_vpn_backend:latest
-    user: "spring:vault"
-    entrypoint: ["init.sh"]
+    entrypoint: ["/bin/sh", "-c", "init.sh"]
     environment:
       FLYWAY_NATIVE_CONNECTORS: true
     depends_on:
@@ -41,6 +39,11 @@ services:
       context: .
       dockerfile: ./docker/vault/Dockerfile
     restart: always
+    command: [
+      "/bin/sh",
+      "-c",
+      "init.sh & vault server -config=/vault/config/config.hcl"
+    ]
     environment:
       VAULT_ADDR: http://127.0.0.1:8200
       VAULT_SKIP_VERIFY: true
@@ -52,10 +55,11 @@ services:
       start_period: 10s
     secrets:
       - spring-app-policy
-      - app_secrets
+      - source: app_secrets
+        target: /vault/secrets/app_secrets.txt
     volumes:
-      - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - ./docker/vault/init-vault.sh:/usr/local/bin/init.sh
+      - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - vault-shared:/vault/secrets
 
   vault-agent-init:
@@ -63,10 +67,10 @@ services:
     user: "root"
     volumes:
       - vault-shared:/vault/secrets
-    command: ["chown", "-R", "100:100", "vault/secrets"]
+    command: ["chown", "-R", "100:1000", "/vault/secrets"]
 
   vault-agent:
-    image: hashicorp/vault:2.0.3
+    image: hashicorp/vault:latest
     working_dir: /vault    
     environment:
       VAULT_ADDR: http://vault:8200
@@ -85,7 +89,8 @@ services:
       retries: 5
       start_period: 2s
     secrets:
-      - app_secrets
+      - source: app_secrets
+        target: /vault/secrets/app_secrets.txt
     volumes:
       - ./docker/vault/agent-config.hcl:/vault/config/agent-config.hcl:ro
       - ./docker/vault/init-agent-vault.sh:/usr/local/bin/init.sh
@@ -97,11 +102,11 @@ secrets:
   app_secrets:
     file: ./.secrets
 
+
 volumes:
   vault-shared:
     driver: local
     driver_opts:
       type: tmpfs
       device: tmpfs
-      mode: 750
   cassandra_data:

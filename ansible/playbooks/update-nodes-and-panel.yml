@@ -1,0 +1,32 @@
+---
+- name: Update 3x-ui panel and nodes
+  hosts: 3x-ui,3x-nodes
+  gather_facts: false
+  remote_user: root
+
+  tasks:
+    - name: Check if 3x-ui is already installed
+      ansible.builtin.stat:
+        path: /usr/bin/install_3x_ui.sh
+      register: x_ui_binary
+
+    - name: Download 3x-ui installer script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/MHSanaei/3x-ui/main/install.sh
+        dest: /usr/bin/install_3x_ui.sh
+        mode: "0755"
+      when: not x_ui_binary.stat.exists
+
+    - name: Update 3x-ui
+      ansible.builtin.command: install_3x_ui.sh
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+        XUI_NONINTERACTIVE: "1"
+      changed_when: true
+
+    - name: Ensure 3x-ui service is running
+      ansible.builtin.systemd:
+        name: x-ui
+        state: started
+        enabled: true
+      changed_when: true

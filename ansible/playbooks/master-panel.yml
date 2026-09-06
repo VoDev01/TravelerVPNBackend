@@ -5,6 +5,8 @@
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
+    local_secrets_file: "{{ local_project_root }}/.secrets"
+    serverspace_token: "{{ lookup('ansible.builtin.ini', 'SERVERSPACE_TOKEN type=properties file=' ~ local_secrets_file) }}"
 
   tasks:
     - name: Execute terraform
@@ -12,35 +14,37 @@
         project_path: "{{ local_project_root }}/terraform/"
         state: present
         variables:
-          node_port: 62053
-          ssh_port: 9432
-          serverspace_token: "{{ vault_serverspace_token }}"
+          node_port: "{{ 65535 | random(start=1024) }}"
+          ssh_port: "{{ 65535 | random(start=1024) }}"
+          serverspace_token: "{{ serverspace_token }}"
       register: vless_node
-      when: vault_serverspace_token is defined
+      when: serverspace_token | length > 0
 
     - name: Add ip to inventory
       ansible.builtin.add_host:
-        name: "3x-node"
-        ansible_host: "{{ vless_node.outputs.public_ip.value }}"
+        name: "3x-ui"
+        ansible_host: "{{ vless_node.outputs.ip.value }}"
         ansible_user: "root"
-      when: vless_node.outputs.public_ip.value is defined
+      when: vless_node.outputs.ip.value is defined
 
-- name: Install 3x-ui Node and TLS certificate
-  hosts: 3x-node
+- name: Install 3x-ui panel and TLS certificate
+  hosts: 3x-ui
   remote_user: root
   gather_facts: false
   become: true
 
-  tasks:
-    - name: Install curl
-      ansible.builtin.apt:
-        name:
-          - curl
-        state: present
-        update_cache: true
-      environment:
-        DEBIAN_FRONTEND: noninteractive
+  vars:
+    allowed_keys:
+      - XUI_SUB_URL
+      - XUI_PANEL_PORT
+      - XUI_ACCESS_URL
+      - XUI_API_TOKEN
+      - XUI_USERNAME
+      - XUI_PASSWORD
 
+    local_secrets_file: "{{ playbook_dir }}/../../.secrets"
+
+  tasks:
     - name: Install pexpect
       ansible.builtin.pip:
         name: pexpect
@@ -63,7 +67,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PORT: "{{ xui_port }}"
+        XUI_PANEL_PORT: "{{ xui_port }}"
         XUI_USERNAME: "{{ xui_username }}"
         XUI_PASSWORD: "{{ xui_password }}"
         XUI_SSL_MODE: "none"
@@ -89,11 +93,69 @@
           (?i)port: "80"
         echo: true
 
+    - name: Check if .secrets exist
+      ansible.builtin.stat:
+        path: "{{ local_secrets_file }}"
+      register: file_stat
+      delegate_to: localhost
+
+    - name: Read .secrets existing contents
+      ansible.builtin.slurp:
+        src: "{{ local_secrets_file }}"
+      when: file_stat.stat.exists and file_stat.stat.size > 0
+      register: existing_secrets_encoded
+      delegate_to: localhost
+      no_log: true
+
+    - name: Initialize existing_secrets var
+      ansible.builtin.set_fact:
+        existing_secrets: {}
+
+    - name: If file doesn't exist or empty - create empty object
+      ansible.builtin.set_fact:
+        existing_secrets: "{{ existing_secrets | combine({ item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim }) }}"
+      loop: "{{ (existing_secrets_encoded['content'] | b64decode | split('\n')) }}"
+      when:
+        - "existing_secrets_encoded.skipped is not defined"
+        - "'=' in item"
+      no_log: true
+
     - name: Read remote 3x-ui credentials
       ansible.builtin.slurp:
         src: /etc/x-ui/install-result.env
       register: remote_file
+      no_log: true
+
+    - name: Split up credentials
+      ansible.builtin.set_fact:
+        remote_lines: "{{ remote_file['content'] | b64decode | split('\n') }}"
+      no_log: true
+
+    - name: Initialize creds var
+      ansible.builtin.set_fact:
+        x_ui_creds: {}
 
     - name: Set 3x-ui credentials
-      ansible.builtin.debug:
-        msg: "{{ remote_file['content'] | b64decode }}"
+      ansible.builtin.set_fact:
+        x_ui_creds: "{{ x_ui_creds | combine({ item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim }) }}"
+      loop: "{{ remote_lines }}"
+      when:
+        - "'=' in item"
+        - "item.split('=', 1)[0] | trim in allowed_keys"
+      no_log: true
+
+    - name: Combine secrets
+      ansible.builtin.set_fact:
+        final_secrets: "{{ existing_secrets | combine(x_ui_creds) }}"
+      no_log: true
+
+    - name: Append secrets to local .secrets
+      ansible.builtin.copy:
+        dest: "{{ local_secrets_file }}"
+        mode: "0440"
+        content: |
+          {% for key, value in final_secrets.items() %}
+          {{ key }}={{ value }}
+          {% endfor %}
+      delegate_to: localhost
+      no_log: true

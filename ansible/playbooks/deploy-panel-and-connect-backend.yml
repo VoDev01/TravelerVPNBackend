@@ -1,0 +1,4 @@
+- name: Deploy 3x-ui panel
+  ansible.builtin.import_playbook: "master-panel.yml"
+- name: Deploy spring backend and connect to panel
+  ansible.builtin.import_playbook: "spring-backend.yml"

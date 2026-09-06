@@ -10,6 +10,12 @@ dependency:
     requirements-file: requirements.yml
 
 platforms:
+  - name: 3x-ui
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
   - name: 3x-node
     image: geerlingguy/docker-ubuntu2204-ansible:latest
     command: ""

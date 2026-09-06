@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+.gradle
+.devcontainer
+.idea
+.kotlin
+bin
+obj

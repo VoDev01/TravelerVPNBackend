@@ -1,0 +1,28 @@
+---
+- name: Create
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    molecule_instance_config: "{{ lookup('env', 'MOLECULE_INSTANCE_CONFIG') }}"
+    # no_log: "{{ molecule_no_log }}"
+
+  handlers:
+    - name: Generate molecule instance config
+      ansible.builtin.include_tasks: handlers/generate_instance.yml
+
+  tasks:
+    - name: Create infrastructure instances
+      community.docker.docker_container:
+        name: "{{ item.name }}"
+        image: "{{ item.image | default('ubuntu:latest') }}"
+        state: started
+        privileged: "{{ item.privileged | default(false) }}"
+        volumes: "{{ item.volumes | default(omit) }}"
+        command: "{{ item.command | default(omit) }}"
+        tmpfs: "{{ item.tmpfs | default(omit) }}"
+        cgroupns_mode: host
+      loop: "{{ molecule_yml.platforms }}"
+      register: server_jobs
+      notify:
+        - Generate molecule instance config

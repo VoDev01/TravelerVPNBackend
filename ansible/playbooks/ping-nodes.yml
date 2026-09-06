@@ -1,0 +1,19 @@
+---
+- name: Create ping job to check nodes acessibility
+  hosts: 3x-node
+  remote_user: root
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Schedule a ping health check every 30 minutes
+      ansible.builtin.cron:
+        name: "Network Ping Check"
+        minute: "*/30"
+        hour: "*"
+        day: "*"
+        month: "*"
+        weekday: "*"
+        job: "/usr/bin/ping -c 6 8.8.8.8 >> /var/log/ping_check.log 2>&1"
+        state: present
+      register: node_ping

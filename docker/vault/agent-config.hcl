@@ -19,3 +19,15 @@ auto_auth {
     mode = 0640
   }
 }
+
+secrets {
+  path          = "secret/spring"
+  type          = "kv-v2"
+  refresh_type  = "periodic"
+  refresh_delay = "1h"
+  
+  mount {
+    path = "/run/secrets/spring-app-policy"
+    name = "spring-app-policy"
+  }
+}

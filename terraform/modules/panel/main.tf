@@ -1,24 +1,3 @@
-variable "location" {
-  type = string
-  default = "am2"
-}
-
-variable "node_port" {
-  type = number
-  validation {
-    condition = var.node_port != null
-    error_message = "Port cant be empty."
-  }
-}
-
-variable "node_ssh_port" {
-  type = number
-  validation {
-    condition = var.node_ssh_port != null
-    error_message = "SSH port cant be empty."
-  }
-}
-
 resource "serverspace_server" "vless_node" {
   name = "node-${var.location}"
   image = "Ubuntu-22.04-X64"
@@ -58,24 +37,4 @@ resource "serverspace_server" "vless_node" {
       "sudo ufw enable"
     ]
   }  
-}
-
-output "vless_node" {
-  description = "Vless node data"
-  value = serverspace_server.vless_node
-}
-
-output "panel" {
-  description = "3x-ui panel data"
-  value = serverspace_server.vless_node
-}
-
-output "spring_backend" {
-  description = "Spring backend data"
-  value = serverspace_server.vless_node
-}
-
-output "ssh_port" {
-  description = "Vless node ssh port"
-  value = var.node_ssh_port
 }

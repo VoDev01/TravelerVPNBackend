@@ -1,7 +1,7 @@
 {
 	"name": "Ansible Terraform",
 	"dockerFile": "Dockerfile",
-	"containerUser": "root",
+	"updateRemoteUserUID": true,
 	"runArgs": [
 		"--security-opt",
 		"seccomp=unconfined",
@@ -32,8 +32,8 @@
 	"privileged": true,
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:latest": {
-            "dockerDashComposeVersion": "v2"
-        }
+			"dockerDashComposeVersion": "v2"
+		}
 	},
 	"customizations": {
 		"vscode": {
@@ -46,6 +46,7 @@
 				"terraform.languageServer.pathToOpenTofuOrTerraform": "terraform",
 				"python.defaultInterpreterPath": "/opt/venv/bin/python3",
 				"python.interpreterPath": "/opt/venv/bin/python3",
+				"python.terminal.activateEnvInCurrentTerminal": true,
 				"ansible.ansible.path": "/opt/venv/bin/ansible",
 				"ansible.python.interpreterPath": "/opt/venv/bin/python3",
 				"ansible.validation.lint.path": "/opt/venv/bin/ansible-lint",
@@ -66,6 +67,6 @@
 	"postCreateCommand": {
 		"community modules": "ansible-galaxy collection install community.general community.docker ansible.posix",
 		"molecule": "pip install \"molecule\" \"molecule-plugins[docker]\"",
-		"rsync": "apt-get update && apt-get install -y rsync"
+		"chown": "chown -R 100:1000 /opt/${localWorkspaceFolderBasename}"
 	}
 }

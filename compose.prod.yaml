@@ -12,15 +12,12 @@ services:
         max-file: "3"
     networks:
       - vpn_network
-    secrets:
-      - app_secrets
 
   vpn-backend:
     ports:
       - "8080:8080"
-    build:
-      context: .
-      dockerfile: docker/backend/prod/Dockerfile
+    image: vodev1405/traveler_vpn_backend:latest
+    user: 100:1000
     restart: always
     logging:
       driver: "json-file"
@@ -33,15 +30,12 @@ services:
   vault:
     ports:
       - "127.0.0.1:8200:8200"
-    command: [
-      "/bin/sh",
-      "-c",
-      "init.sh & exec vault server -config=/vault/config/config.hcl"
-    ]
+    user: 100:1000
     networks:
       - vpn_network
 
   vault-agent:
+    user: 100:1000
     networks:
       - vpn_network
 

@@ -1,0 +1,11 @@
+- name: Populate instance config
+  ansible.builtin.set_fact:
+    instance_conf:
+
+- name: Dump instance config
+  ansible.builtin.copy:
+    content: |
+      # Molecule mana
+      {{ instance_conf | to_json | from_json | to_yaml }}
+    dest: "{{ molecule_instance_config }}"
+    mode: "0600"

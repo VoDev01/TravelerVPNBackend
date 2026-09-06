@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 SECRET_FILE="/run/secrets/app_secrets"
 

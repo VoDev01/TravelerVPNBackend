@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -euo pipefail
 
 export VAULT_TOKEN=$(cat /vault/secrets/vault-token)
 
