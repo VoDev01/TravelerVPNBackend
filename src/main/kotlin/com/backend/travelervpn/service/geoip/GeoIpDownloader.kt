@@ -1,8 +1,7 @@
-package com.backend.travelervpn.job
+package com.backend.travelervpn.service.geoip
 
 import com.backend.travelervpn.config.GeoIpConfig
 import com.backend.travelervpn.config.MaxMindProperties
-import com.backend.travelervpn.service.GeoIpService
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

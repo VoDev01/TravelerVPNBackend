@@ -39,13 +39,16 @@ class VpnControllerTest {
     fun setUp() {
         objectMapper = ObjectMapper().registerKotlinModule()
 
+        val uuid = UUID.randomUUID()
+
         // Mock VpnUserRepository
         val vpnUser = VpnUser(
-            userId = UUID.randomUUID(),
+            userId = uuid,
             username = "testuser",
             connectionLinks = setOf("link1", "link2"),
-            expiryAt = Instant.now().plusSeconds(3600),
-            trafficLeft = 26843545600L
+            expiryAt = Instant.now().plusSeconds(3600).toEpochMilli(),
+            trafficLeft = 26843545600L,
+            email = uuid.toString().plus("@secret.com")
         )
         coEvery { vpnUserRepository.findById(any<String>()) } returns mockk(relaxed = true)
         coEvery { vpnUserRepository.save(any<VpnUser>()) } returns mockk(relaxed = true)
@@ -62,7 +65,7 @@ class VpnControllerTest {
         } returns mockk(relaxed = true)
         coEvery { xuiManagerService.getClientByEmail(any()) } returns mockk(relaxed = true)
         coEvery { xuiManagerService.getClientTraffic(any()) } returns mockk(relaxed = true)
-        coEvery { xuiManagerService.testNode(any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { xuiManagerService.testNode(any()) } returns mockk(relaxed = true)
     }
 
     @Test

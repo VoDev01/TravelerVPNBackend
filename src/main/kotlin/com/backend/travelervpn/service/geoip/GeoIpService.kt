@@ -1,5 +1,4 @@
-package com.backend.travelervpn.service
-
+package com.backend.travelervpn.service.geoip
 
 import com.maxmind.geoip2.DatabaseReader
 import com.maxmind.db.CHMCache

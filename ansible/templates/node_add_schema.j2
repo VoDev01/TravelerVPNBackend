@@ -1,0 +1,14 @@
+{{- 
+    {
+    "remark": "{{ item.remark }}",
+    "address": "{{ item.address }}",
+    "port": {{ item.port | int }},
+    "apikey": "{{ item.apikey | default('') }}",
+    "enabled": {{ 'true' if item.enabled is defined else true }},
+    "tags": "{{ item.tags | default('') }}",
+    "protocol": "{{ item.protocol | default('vless') }}",
+    "transport": "{{ item.transport | default('none') }}",
+    "tls": {{ 'true' if item.tls is defined else false }},
+    "client_certificate_path": "{{ item.client_certificate_path | default('') }}"
+    } 
+}}

@@ -2,49 +2,53 @@
 - name: Add new inbound connection to master panel
   hosts: spring-backend
   gather_facts: false
+  connection: http
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
     local_secrets_file: "{{ local_project_root }}/.secrets"
-    xui_url: "{{ lookup('ansible.builtin.ini', 'XUI_ACCESS_URL type=properties file=' ~ local_secrets_file) }}"
-    xui_username: "{{ lookup('ansible.builtin.ini', 'XUI_USERNAME type=properties file=' ~ local_secrets_file) }}"
-    xui_password: "{{ lookup('ansible.builtin.ini', 'XUI_PASSWORD type=properties file=' ~ local_secrets_file) }}"
+
+    xui_url: >-
+      {%- if molecule_ephemeral_directory is defined -%}
+        http://3x-ui:2552/test
+      {%- else -%}
+        {{ lookup('ansible.builtin.ini', 'XUI_ACCESS_URL type=properties file=' ~ local_secrets_file) }}
+      {%- endif -%}
+
+    xui_api_token: "{{ lookup('ansible.builtin.ini', 'XUI_API_TOKEN type=properties file=' ~ local_secrets_file) }}"
 
   tasks:
-    - name: Login to Master-Panel
+    - name: Test connection to 3x-ui
       ansible.builtin.uri:
-        url: "{{ xui_url }}/login"
-        method: POST
-        body_format: form-urlencoded
-        body:
-          username: "{{ xui_username }}"
-          password: "{{ xui_password }}"
+        url: "{{ xui_url }}"
+        method: GET
         status_code: 200
-      register: login_response
+      register: test_conn
+      failed_when: false
+
+    - name: Debug connection info
+      ansible.builtin.debug:
+        msg: "Connection status: {{ test_conn.status | default('failed') }} URL: {{ xui_url }}"
 
     - name: Add node to Master-Panel
       ansible.builtin.uri:
-        url: "{{ xui_api_url }}/panel/api/nodes/add"
+        url: "{{ xui_url }}/panel/api/nodes/add"
         method: POST
-        body_format: form-urlencoded
+        body_format: json
         headers:
-          Cookie: "{{ login_response.set_cookie }}"
-        body:
-          remark: "{{ item.name }}"
-          address: "{{ item.address }}"
-          port: "{{ item.port }}"
-          apikey: ""
+          Authorization: "Bearer {{ xui_api_token }}"
+          Content-Type: application/json
+        body: "{{ lookup('template', 'templates/node_add_schema.j2') | from_json }}"
       loop: "{{ nodes }}"
       register: node_creation_results
 
     - name: "Create inbounds for node_id: {{ node_creation_results.obj.id }}"
       ansible.builtin.uri:
-        url: "{{ xui_api_url }}/panel/api/inbounds/add"
+        url: "{{ xui_url }}/panel/api/inbounds/add"
         method: POST
         body_format: json
         headers:
-          Cookie: "{{ login_response.set_cookie }}"
-          Content-Type: "application/json"
+          Authorization: "Bearer {{ xui_api_token }}"
         body: "{{ lookup('template', 'templates/vless_reality_xhttp.json.j2') | from_json }}"
         status_code: 200
       loop: "{{ node_creation_results.obj }}"

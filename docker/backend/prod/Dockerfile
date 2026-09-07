@@ -14,10 +14,7 @@ RUN --mount=type=cache,target=/root/.gradle \
 COPY src ./src
 
 RUN --mount=type=cache,target=/root/.gradle \
-    --mount=type=cache,target=/app/.gradle \
-    ./gradlew bootJar --no-daemon -Pproduction
-
-RUN java -Djarmode=tools -jar build/libs/*.jar extract --layers --destination extracted
+    ./gradlew build -x test --no-daemon -Pproduction
 
 FROM amazoncorretto:24-headless
 WORKDIR /app
@@ -33,9 +30,6 @@ RUN dnf install -y shadow-utils && \
 
 USER spring:spring
 
-COPY --from=builder /app/extracted/dependencies/ ./
-COPY --from=builder /app/extracted/spring-boot-loader/ ./
-COPY --from=builder /app/extracted/snapshot-dependencies/ ./
-COPY --from=builder /app/extracted/application/ ./
+COPY --from=builder /app/build/libs/*-SNAPSHOT.jar ./app.jar
 
-CMD ["java", "-XX:+UseG1GC", "-Xmx512m", "org.springframework.boot.loader.launch.JarLauncher"]
+CMD ["java", "-XX:+UseG1GC", "-Xmx512m", "-jar", "app.jar"]

@@ -21,6 +21,7 @@ services:
       - ./docker/cassandra/init.sh:/usr/local/bin/init.sh
 
   vpn-backend:
+    entrypoint: ["init.sh"]
     environment:
       FLYWAY_NATIVE_CONNECTORS: true
     depends_on:

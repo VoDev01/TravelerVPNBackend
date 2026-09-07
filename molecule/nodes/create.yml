@@ -12,6 +12,12 @@
       ansible.builtin.include_tasks: handlers/generate_instance.yml
 
   tasks:
+    - name: Create network
+      community.docker.docker_network:
+        name: molecule
+        state: present
+        driver: bridge
+
     - name: Create infrastructure instances
       community.docker.docker_container:
         name: "{{ item.name }}"
@@ -22,8 +28,9 @@
         command: "{{ item.command | default(omit) }}"
         tmpfs: "{{ item.tmpfs | default(omit) }}"
         cgroupns_mode: host
-        ports:
-          - "8080"
+        ports: "{{ item.published_ports | default([]) | map('string') | list }}"
+        networks:
+          - name: molecule
       loop: "{{ molecule_yml.platforms }}"
       register: server_jobs
       notify:

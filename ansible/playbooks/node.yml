@@ -6,7 +6,6 @@
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
     local_secrets_file: "{{ local_project_root }}/.secrets"
-    xui_port: "{{ lookup('ansible.builtin.ini', 'XUI_PANEL_PORT type=properties file=' ~ local_secrets_file) }}"
     xui_username: "{{ lookup('ansible.builtin.ini', 'XUI_USERNAME type=properties file=' ~ local_secrets_file) }}"
     xui_password: "{{ lookup('ansible.builtin.ini', 'XUI_PASSWORD type=properties file=' ~ local_secrets_file) }}"
     serverspace_token: "{{ lookup('ansible.builtin.ini', 'SERVERSPACE_TOKEN type=properties file=' ~ local_secrets_file) }}"

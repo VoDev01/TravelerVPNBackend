@@ -6,7 +6,7 @@ import com.backend.travelervpn.generated.api.schema.ClientTraffic
 import com.backend.travelervpn.generated.api.schema.Inbound
 import com.backend.travelervpn.repository.VpnUserRepository
 import com.backend.travelervpn.repository.VpnUserRepositoryReactive
-import com.backend.travelervpn.service.GeoIpService
+import com.backend.travelervpn.service.geoip.GeoIpService
 import com.backend.travelervpn.service.VpnLinkExtractorService
 import com.backend.travelervpn.service.xui.XUIManagerService
 import com.backend.travelervpn.service.xui.XuiWebSocketData

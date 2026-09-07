@@ -72,6 +72,20 @@
         XUI_PASSWORD: "{{ xui_password }}"
         XUI_SSL_MODE: "none"
       changed_when: true
+      when: molecule_ephemeral_directory is not defined
+
+    - name: Install 3x-ui (molecule)
+      ansible.builtin.command: install_3x_ui.sh
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+        XUI_NONINTERACTIVE: "1"
+        XUI_PANEL_PORT: "{{ xui_port }}"
+        XUI_USERNAME: "{{ xui_username }}"
+        XUI_PASSWORD: "{{ xui_password }}"
+        XUI_WEB_BASE_PATH: "{{ xui_web_base_path }}"
+        XUI_SSL_MODE: "none"
+      changed_when: true
+      when: molecule_ephemeral_directory is defined
 
     - name: Ensure 3x-ui service is running
       ansible.builtin.systemd:

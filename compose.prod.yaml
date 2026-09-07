@@ -17,6 +17,10 @@ services:
     ports:
       - "8080:8080"
     image: vodev1405/traveler_vpn_backend:latest
+    build:
+      context: .
+      dockerfile: ./docker/backend/prod/Dockerfile
+    command: ["java", "-XX:+UseG1GC", "-Xmx512m", "-jar", "app.jar"]
     user: 100:1000
     restart: always
     logging:
