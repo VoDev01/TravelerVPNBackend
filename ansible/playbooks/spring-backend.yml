@@ -11,16 +11,9 @@
         variables:
           node_port: "{{ 65535 | random(start=1024) }}"
           ssh_port: "{{ 65535 | random(start=1024) }}"
-          serverspace_token: "{{ vault_serverspace_token }}"
+          serverspace_token: "{{ serverspace_token }}"
       register: vless_node
-      when: vault_serverspace_token is defined
-
-    - name: Add ip to inventory
-      ansible.builtin.add_host:
-        name: "spring-backend"
-        ansible_host: "{{ vless_node.outputs.public_ip.value }}"
-        ansible_user: "root"
-      when: vless_node.outputs.public_ip.value is defined
+      when: molecule_ephemeral_directory is not defined
 
 - name: Deploy Spring Backend
   hosts: spring-backend

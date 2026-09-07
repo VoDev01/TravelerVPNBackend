@@ -6,19 +6,18 @@
   vars:
     molecule_instance_config: "{{ lookup('env', 'MOLECULE_INSTANCE_CONFIG') }}"
     # no_log: "{{ molecule_no_log }}"
+
   tasks:
-    - name: Remove networks
-      community.docker.docker_network:
-        name: molecule
+    - name: Destroy terraform
+      community.general.terraform:
+        project_path: "{{ molecule_scenario_directory }}/../../terraform-test"
         state: absent
 
-    - name: Destroy infrastructure instances
-      community.docker.docker_container:
-        name: "{{ item.name }}"
-        state: absent
-      loop: "{{ molecule_yml.platforms }}"
-      notify: Destroy instance
+    - name: Destroy instance_conf
+      ansible.builtin.set_fact:
+        instance_conf: []
 
-  handlers:
-    - name: Destroy instance
-      ansible.builtin.include_tasks: handlers/destroy_instance.yml
+    - name: Remove molecule instance config file
+      ansible.builtin.file:
+        path: "{{ molecule_instance_config }}"
+        state: absent

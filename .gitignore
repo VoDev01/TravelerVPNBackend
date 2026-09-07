@@ -44,3 +44,5 @@ out/
 .env
 .VSCodeCounter
 *.mmdb
+*.pem
+*.pub

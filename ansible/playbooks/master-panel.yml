@@ -6,7 +6,6 @@
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
     local_secrets_file: "{{ local_project_root }}/.secrets"
-    serverspace_token: "{{ lookup('ansible.builtin.ini', 'SERVERSPACE_TOKEN type=properties file=' ~ local_secrets_file) }}"
 
   tasks:
     - name: Execute terraform
@@ -18,14 +17,7 @@
           ssh_port: "{{ 65535 | random(start=1024) }}"
           serverspace_token: "{{ serverspace_token }}"
       register: vless_node
-      when: serverspace_token | length > 0
-
-    - name: Add ip to inventory
-      ansible.builtin.add_host:
-        name: "3x-ui"
-        ansible_host: "{{ vless_node.outputs.ip.value }}"
-        ansible_user: "root"
-      when: vless_node.outputs.ip.value is defined
+      when: molecule_ephemeral_directory is not defined
 
 - name: Install 3x-ui panel and TLS certificate
   hosts: 3x-ui

@@ -1,37 +1,38 @@
 ---
-- name: Create
+- name: Create Infrastructure via Terraform
   hosts: localhost
-  connection: local
   gather_facts: false
   vars:
     molecule_instance_config: "{{ lookup('env', 'MOLECULE_INSTANCE_CONFIG') }}"
-    # no_log: "{{ molecule_no_log }}"
-
-  handlers:
-    - name: Generate molecule instance config
-      ansible.builtin.include_tasks: handlers/generate_instance.yml
 
   tasks:
-    - name: Create network
-      community.docker.docker_network:
-        name: molecule
+    - name: Apply terraform
+      community.general.terraform:
+        project_path: "{{ molecule_scenario_directory }}/../../terraform-test"
         state: present
-        driver: bridge
+      register: tf_output
 
-    - name: Create infrastructure instances
-      community.docker.docker_container:
-        name: "{{ item.name }}"
-        image: "{{ item.image | default('ubuntu:latest') }}"
-        state: started
-        privileged: "{{ item.privileged | default(false) }}"
-        volumes: "{{ item.volumes | default(omit) }}"
-        command: "{{ item.command | default(omit) }}"
-        tmpfs: "{{ item.tmpfs | default(omit) }}"
-        cgroupns_mode: host
-        ports: "{{ item.published_ports | default([]) | map('string') | list }}"
-        networks:
-          - name: molecule
-      loop: "{{ molecule_yml.platforms }}"
-      register: server_jobs
-      notify:
-        - Generate molecule instance config
+    - name: Populate instance config dict
+      ansible.builtin.set_fact:
+        instance_server:
+          instance: "{{ item.key }}"
+          address: "{{ item.key }}"
+          user: "root"
+          connection: "community.docker.docker"
+          ansible_remote_tmp: "/tmp"
+      with_dict: "{{ tf_output.outputs.instances.value | default({}) }}"
+      register: instance_config_dict
+
+    - name: Convert instance config dict to a list
+      ansible.builtin.set_fact:
+        instance_conf: "{{ instance_config_dict.results | default([]) | map(attribute='ansible_facts.instance_server') | list }}"
+      when: instance_config_dict.results is defined
+
+    - name: Dump instance config
+      ansible.builtin.copy:
+        content: |
+          # Molecule managed
+          {{ (instance_conf | default([])) | to_json | from_json | to_yaml }}
+        dest: "{{ molecule_instance_config }}"
+        mode: "0600"
+      when: instance_config_dict.results is defined
