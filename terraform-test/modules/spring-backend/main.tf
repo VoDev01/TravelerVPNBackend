@@ -36,11 +36,6 @@ resource "docker_container" "vps_test_container" {
     container_path = "/var/run/docker.sock"
   }
 
-  volumes {
-    host_path      = "/opt/travelervpn"
-    container_path = "/opt/travelervpn"
-  }
-
   ports {
     internal = 8080
   }

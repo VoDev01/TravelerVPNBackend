@@ -20,6 +20,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/backend/prod/Dockerfile
+    pull_policy: missing
     command: ["java", "-XX:+UseG1GC", "-Xmx512m", "-jar", "app.jar"]
     user: 100:1000
     restart: always

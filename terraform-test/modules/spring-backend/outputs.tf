@@ -13,7 +13,7 @@ resource "local_file" "ansible_inventory" {
       }
     }
   })
-  filename = "${path.module}/../../ansible/inventory/terraform_hosts.yml"
+  filename = "${path.module}/../../../ansible/inventory/terraform_hosts.yml"
 }
 
 output "container_info" {
