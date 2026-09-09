@@ -1,6 +1,9 @@
 ---
+- name: Create node
+  ansible.builtin.import_playbook: "../../ansible/playbooks/node.yml"
+
 - name: Add new inbound connection to master panel
-  hosts: spring-backend
+  hosts: spring_backends
   gather_facts: false
   connection: http
 
@@ -16,8 +19,6 @@
       {%- endif -%}
     xui_api_token: "{{ lookup('ansible.builtin.ini', 'XUI_API_TOKEN type=properties file=' ~ local_secrets_file) }}"
 
-    nodes: "{{ groups['3x-nodes'] }}"
-
   tasks:
     - name: Test connection to 3x-ui
       ansible.builtin.uri:
@@ -31,6 +32,10 @@
       ansible.builtin.debug:
         msg: "Connection status: {{ test_conn.status | default('failed') }} URL: {{ xui_url }}"
 
+    - name: Debug connection info
+      ansible.builtin.debug:
+        msg: "{{ hostvars['3x-node-0'].node_credentials}}"
+
     - name: Add node to Master-Panel
       ansible.builtin.uri:
         url: "{{ xui_url }}/panel/api/nodes/add"
@@ -39,8 +44,17 @@
         headers:
           Authorization: "Bearer {{ xui_api_token }}"
           Content-Type: application/json
-        body: "{{ lookup('template', '../templates/node_add_schema.j2') | from_json }}"
-      loop: "{{ nodes }}"
+        body:
+          address: "{{ hostvars[item].node_credentials.NODE_ADDRESS }}"
+          port: "{{ hostvars[item].node_credentials.NODE_INBOUND_PORT }}"
+          apikey: "{{ hostvars[item].node_credentials.XUI_API_TOKEN }}"
+          enabled: true
+          tags: "{{ item.tags | default('') }}"
+          protocol: vless
+          transport: "{{ item.transport | default('none') }}"
+          tls: "{{ item.tls | default(false) | bool }}"
+          client_certificate_path: "{{ item.client_certificate_path | default('') }}"
+      loop: "{{ groups['nodes'] }}"
       register: node_creation_results
 
     - name: "Create inbounds for node_id: {{ node_creation_results.obj.id }}"
@@ -53,5 +67,3 @@
         body: "{{ lookup('template', '../templates/vless_reality_xhttp.json.j2') | from_json }}"
         status_code: 200
       loop: "{{ node_creation_results.obj }}"
-      loop_control:
-        label: "{{ item.remark }} ({{ item.transport }})"

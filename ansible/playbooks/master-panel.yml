@@ -5,7 +5,6 @@
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
-    local_secrets_file: "{{ local_project_root }}/.secrets"
 
   tasks:
     - name: Execute terraform
@@ -20,7 +19,7 @@
       when: molecule_ephemeral_directory is not defined
 
 - name: Install 3x-ui panel and TLS certificate
-  hosts: 3x-ui
+  hosts: panels
   remote_user: root
   gather_facts: false
   become: true
@@ -34,7 +33,7 @@
       - XUI_USERNAME
       - XUI_PASSWORD
 
-    local_secrets_file: "{{ playbook_dir }}/../../.secrets"
+    local_secrets_file: "{{ playbook_dir }}/../../.env"
 
   tasks:
     - name: Install pexpect
@@ -99,13 +98,13 @@
           (?i)port: "80"
         echo: true
 
-    - name: Check if .secrets exist
+    - name: Check if .env exist
       ansible.builtin.stat:
         path: "{{ local_secrets_file }}"
       register: file_stat
       delegate_to: localhost
 
-    - name: Read .secrets existing contents
+    - name: Read .env existing contents
       ansible.builtin.slurp:
         src: "{{ local_secrets_file }}"
       when: file_stat.stat.exists and file_stat.stat.size > 0
@@ -155,7 +154,7 @@
         final_secrets: "{{ existing_secrets | combine(x_ui_creds) }}"
       no_log: true
 
-    - name: Append secrets to local .secrets
+    - name: Append secrets to local .env
       ansible.builtin.copy:
         dest: "{{ local_secrets_file }}"
         mode: "0440"

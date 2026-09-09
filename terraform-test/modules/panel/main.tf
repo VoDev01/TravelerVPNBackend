@@ -17,7 +17,7 @@ resource "docker_image" "ubuntu_ansible" {
 }
 
 resource "docker_container" "vps_test_container" {
-  name  = "3x-ui"
+  name  = "3x-ui-0"
   image = docker_image.ubuntu_ansible.image_id
   
   command = ["/lib/systemd/systemd"]

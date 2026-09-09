@@ -1,6 +1,6 @@
 ---
 - name: Create ping job to check nodes acessibility
-  hosts: 3x-node
+  hosts: nodes
   remote_user: root
   gather_facts: false
   become: true

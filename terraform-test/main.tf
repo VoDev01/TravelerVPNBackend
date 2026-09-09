@@ -15,8 +15,8 @@ module "panel" {
     network_id = docker_network.molecule_network.id
 }
 
-module "spring-backend" {
-    source = "./modules/spring-backend"
+module "spring_backend" {
+    source = "./modules/spring_backend"
     count = var.enable_backend ? 1 : 0
     network_id = docker_network.molecule_network.id
 }

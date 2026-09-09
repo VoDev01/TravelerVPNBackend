@@ -9,15 +9,6 @@ dependency:
     role-file: requirements.yml
     requirements-file: requirements.yml
 
-platforms:
-  - name: 3x-ui
-
-  - name: 3x-node
-    groups:
-      - 3x-nodes
-
-  - name: spring-backend
-
 provisioner:
   name: ansible
   inventory:
@@ -27,13 +18,17 @@ provisioner:
         xui_username: "test"
         xui_password: "test123"
         xui_port: "2552"
-        node_port: "8443"
+        node_port: "443"
+        node_remark: "test-node-0"
 
 ansible:
   cfg:
     defaults:
+      remote_tmp: /tmp
       host_key_checking: false
       verbosity: 1
+    privilege_escalation:
+      executable: /bin/bash
   env:
     ANSIBLE_FORCE_COLOR: "1"
     ANSIBLE_LOAD_CALLBACK_PLUGINS: "1"
@@ -44,6 +39,7 @@ ansible:
       ansible_playbook:
         - --diff
         - --force-handlers
+        - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/../../ansible/inventories/terraform_hosts.yml
       ansible_navigator:
         - --mode stdout
         - --pull-policy missing

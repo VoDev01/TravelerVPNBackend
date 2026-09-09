@@ -10,7 +10,7 @@
     "clients": [],
     "decryptions": [],
     "fallbacks": []
-  } | to_json | to_json }},
+  } | to_json }},
   "streamSettings": {{ {
     "network": "xhttp",
     "security": "reality",
@@ -30,7 +30,7 @@
       "settings": {{ {
         "publicKey": inbound.reality_public_key,
         "fingerprint": inbound.fingerprint | default("chrome")
-      } | to_json | to_json }}
+      } | to_json }}
     }
-  } | to_json | to_json }}
+  } | to_json }}
 }

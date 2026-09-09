@@ -39,7 +39,6 @@ out/
 ### Kotlin ###
 .kotlin
 
-.secrets
 .terraformrc
 .env
 .VSCodeCounter

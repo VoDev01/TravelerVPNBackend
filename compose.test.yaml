@@ -84,7 +84,7 @@ services:
 
 secrets:
   vault_secrets:
-    file: ./.secrets
+    file: ./.env
   spring-app-policy:
     file: ./docker/vault/spring-app-policy.hcl
 

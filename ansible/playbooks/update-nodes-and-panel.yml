@@ -1,6 +1,6 @@
 ---
 - name: Update 3x-ui panel and nodes
-  hosts: 3x-ui,3x-nodes
+  hosts: panels,nodes
   gather_facts: false
   remote_user: root
 

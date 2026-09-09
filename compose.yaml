@@ -105,7 +105,7 @@ secrets:
   spring-app-policy:
     file: ./docker/vault/spring-app-policy.hcl
   app_secrets:
-    file: ./.secrets
+    file: ./.env
 
 volumes:
   vault-shared:

@@ -18,8 +18,6 @@
           instance: "{{ item.key }}"
           address: "{{ item.key }}"
           user: "root"
-          connection: "community.docker.docker"
-          ansible_remote_tmp: "/tmp"
       with_dict: "{{ tf_output.outputs.instances.value | default({}) }}"
       register: instance_config_dict
 
