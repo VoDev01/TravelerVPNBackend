@@ -1,0 +1,10 @@
+{
+  "address": "{{ hostvars[item].node_credentials.NODE_ADDRESS }}",
+  "port": {{ hostvars[item].node_credentials.XUI_PANEL_PORT | int }},
+  "apiToken": "{{ hostvars[item].node_credentials.XUI_API_TOKEN }}",
+  "basePath": "{{ hostvars[item].node_credentials.XUI_WEB_BASE_PATH }}",
+  "name": "{{ item }}",
+  "enabled": true,
+  "scheme": "{{ 'http' if molecule_ephemeral_directory is defined else 'https' }}",
+  "allowPrivateAddress": {{ (true if molecule_ephemeral_directory is defined else false) | to_json }}
+}

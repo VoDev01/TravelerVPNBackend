@@ -1,0 +1,29 @@
+---
+- name: Teardown blocked node
+  hosts: nodes
+  gather_facts: false
+
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+
+  vars_prompt:
+    - name: resource_name
+      prompt: "Terraform resource name of node"
+      default: "serverspace_server"
+
+    - name: node_name
+      prompt: "Node name to teardown"
+      default: "3x-node-0"
+
+  tasks:
+    - name: Destroy nodes
+      community.general.terraform:
+        project_path: "{{ local_project_root }}/terraform/"
+        state: absent
+        targets:
+          - "{{ resource_name }}.{{ node_name }}"
+
+- name: Delete node and inbound connection from panel
+  hosts: panel
+  gather_facts: false
+  connection: http

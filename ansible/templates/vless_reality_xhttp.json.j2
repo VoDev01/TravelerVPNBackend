@@ -1,9 +1,10 @@
 {
-  "address": "{{ inbound.address }}"
+  "nodeId": {{ node_add_response.json.obj.id | int }},
+  "address": "{{ node_add_response.json.obj.address }}",
   "listen": "0.0.0.0",
   "enable": true,
-  "remark": "{{ inbound.remark }}",
-  "port": {{ inbound.port }},
+  "remark": "{{ serverspace_cities[hostvars[item].node_credentials.NODE_LOCATION] }}",
+  "port": {{ node_add_response.json.obj.port | int }},
   "protocol": "vless",
   "sniffing": "{\"enabled\":true,\"destOverride\":[\"http\",\"tls\",\"quic\"]}",
   "settings": {{ {
@@ -16,21 +17,21 @@
     "security": "reality",
     "externalProxy": [],
     "xhttpSettings": {
-      "mode": inbound.xhttp_mode | default("auto"),
-      "path": inbound.xhttp_path | default("/drivers/update"),
-      "host": inbound.reality_server_name | default("google.com")
+      "mode": "auto",
+      "path": "/drivers/update",
+      "host": "google.com"
     },
     "realitySettings": {
       "show": false,
       "xver": 0,
-      "dest": inbound.reality_dest | default("google.com:443"),
-      "serverNames": [ inbound.reality_server_name | default("google.com") ],
-      "privateKey": inbound.reality_private_key,
-      "shortIds": [ inbound.reality_short_id | default("0123456789abcdef") ],
-      "settings": {{ {
-        "publicKey": inbound.reality_public_key,
-        "fingerprint": inbound.fingerprint | default("chrome")
-      } | to_json }}
+      "dest": "google.com:443",
+      "serverNames": [ "google.com" ],
+      "privateKey": private_key,
+      "shortIds": [ short_id ],
+      "settings": {
+        "fingerprint": "chrome",
+        "publicKey": public_key
+      }
     }
   } | to_json }}
 }

@@ -5,5 +5,7 @@
   ansible.builtin.import_playbook: "../../ansible/playbooks/master-panel.yml"
 - name: Converge Spring Backend
   ansible.builtin.import_playbook: "../../ansible/playbooks/spring-backend.yml"
+- name: Converge Node
+  ansible.builtin.import_playbook: "../../ansible/playbooks/node.yml"
 - name: Converge Add Node Inbound
-  ansible.builtin.import_playbook: "../../ansible/playbooks/add-node-inbound.yml"
+  ansible.builtin.import_playbook: "../../ansible/playbooks/add-node-inbounds.yml"

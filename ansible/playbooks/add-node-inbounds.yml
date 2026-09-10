@@ -1,0 +1,34 @@
+---
+- name: Add new inbound connections from nodes inventory to master panel
+  hosts: spring_backends
+  gather_facts: false
+  connection: http
+
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+    local_env_file: "{{ local_project_root }}/.env"
+
+    xui_url: >-
+      {%- if molecule_ephemeral_directory is defined -%}
+        http://3x-ui-0:2552/test
+      {%- else -%}
+        {{ lookup('ansible.builtin.ini', 'XUI_ACCESS_URL type=properties file=' ~ local_env_file) }}
+      {%- endif -%}
+    xui_api_token: "{{ lookup('ansible.builtin.ini', 'XUI_API_TOKEN type=properties file=' ~ local_env_file) }}"
+
+  tasks:
+    - name: Test connection to 3x-ui
+      ansible.builtin.uri:
+        url: "{{ xui_url }}"
+        method: GET
+        status_code: 200
+      register: test_conn
+      failed_when: false
+
+    - name: Use serverspace locations
+      ansible.builtin.include_vars:
+        file: "../vars/serverspace.yml"
+
+    - name: Add nodes to Master-Panel
+      ansible.builtin.include_tasks: "../tasks/generate-node-inbound.yml"
+      loop: "{{ groups['nodes'] }}"

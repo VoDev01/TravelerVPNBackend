@@ -1,0 +1,47 @@
+---
+- name: Generate X25519 private key
+  ansible.builtin.command: "openssl genpkey -algorithm X25519"
+  delegate_to: "{{ item }}"
+  register: openssl_priv_raw
+  changed_when: false
+  no_log: true
+
+- name: Generate X25519 public key
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo '{{ openssl_priv_raw.stdout }}' | openssl pkey -pubout
+  args:
+    executable: "/bin/bash"
+  delegate_to: "{{ item }}"
+  register: openssl_pub_raw
+  changed_when: false
+  no_log: true
+
+- name: Convert keys to Base64 and set shortId
+  ansible.builtin.set_fact:
+    private_key: "{{ openssl_priv_raw.stdout | regex_findall('(?m)^(?!-----).*$') | join('') }}"
+    public_key: "{{ openssl_pub_raw.stdout | regex_findall('(?m)^(?!-----).*$') | join('') }}"
+    short_id: "{{ lookup('ansible.builtin.password', '/dev/null chars=hexdigits length=16') | lower }}"
+  delegate_to: "{{ item }}"
+  no_log: true
+
+- name: Add nodes to Master-Panel
+  ansible.builtin.uri:
+    url: "{{ xui_url }}/panel/api/nodes/add"
+    method: POST
+    body_format: json
+    headers:
+      Authorization: "Bearer {{ xui_api_token }}"
+      Content-Type: application/json
+    body: "{{ lookup('template', '../templates/node_add.json.j2') | from_json }}"
+  register: node_add_response
+
+- name: "Create inbounds"
+  ansible.builtin.uri:
+    url: "{{ xui_url }}/panel/api/inbounds/add"
+    method: POST
+    body_format: json
+    headers:
+      Authorization: "Bearer {{ xui_api_token }}"
+    body: "{{ lookup('template', '../templates/vless_reality_xhttp.json.j2') | from_json }}"
+    status_code: 200

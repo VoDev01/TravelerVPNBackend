@@ -4,10 +4,6 @@ terraform {
       source  = "kreuzwerker/docker"
       version = "~> 4.6.0"
     }
-    local = {
-      source  = "hashicorp/local"
-      version = ">= 2.0.0"
-    }
   }
 }
 
@@ -19,7 +15,7 @@ resource "docker_image" "ubuntu_ansible" {
 resource "docker_container" "vps_test_container" {
   name  = "spring-backend-0"
   image = docker_image.ubuntu_ansible.image_id
-  
+
   command = ["/lib/systemd/systemd"]
 
   privileged = true

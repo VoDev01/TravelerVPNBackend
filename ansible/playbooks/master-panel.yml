@@ -35,6 +35,14 @@
 
     local_secrets_file: "{{ playbook_dir }}/../../.env"
 
+  vars_prompt:
+    - name: xui_username
+      prompt: "Panel administrator username"
+
+    - name: xui_password
+      prompt: "Panel administrator password"
+      private: true
+
   tasks:
     - name: Install pexpect
       ansible.builtin.pip:
@@ -58,7 +66,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PANEL_PORT: "{{ xui_port }}"
+        XUI_PANEL_PORT: "{{ panel_port }}"
         XUI_USERNAME: "{{ xui_username }}"
         XUI_PASSWORD: "{{ xui_password }}"
         XUI_SSL_MODE: "none"
@@ -70,7 +78,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PANEL_PORT: "{{ xui_port }}"
+        XUI_PANEL_PORT: "{{ panel_port }}"
         XUI_USERNAME: "{{ xui_username }}"
         XUI_PASSWORD: "{{ xui_password }}"
         XUI_WEB_BASE_PATH: "{{ xui_web_base_path }}"
@@ -83,7 +91,6 @@
         name: x-ui
         state: started
         enabled: true
-      changed_when: true
 
     - name: Install tls certificate
       ansible.builtin.expect:
@@ -104,7 +111,7 @@
       register: file_stat
       delegate_to: localhost
 
-    - name: Read .env existing contents
+    - name: Read existing .env content
       ansible.builtin.slurp:
         src: "{{ local_secrets_file }}"
       when: file_stat.stat.exists and file_stat.stat.size > 0
@@ -112,13 +119,9 @@
       delegate_to: localhost
       no_log: true
 
-    - name: Initialize existing_secrets var
-      ansible.builtin.set_fact:
-        existing_secrets: {}
-
     - name: If file doesn't exist or empty - create empty object
       ansible.builtin.set_fact:
-        existing_secrets: "{{ existing_secrets | combine({ item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim }) }}"
+        existing_secrets: "{{ existing_secrets | default({}) | combine({item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim}) }}"
       loop: "{{ (existing_secrets_encoded['content'] | b64decode | split('\n')) }}"
       when:
         - "existing_secrets_encoded.skipped is not defined"
@@ -128,33 +131,29 @@
     - name: Read remote 3x-ui credentials
       ansible.builtin.slurp:
         src: /etc/x-ui/install-result.env
-      register: remote_file
+      register: remote_env
       no_log: true
 
     - name: Split up credentials
       ansible.builtin.set_fact:
-        remote_lines: "{{ remote_file['content'] | b64decode | split('\n') }}"
+        remote_lines: "{{ remote_env['content'] | b64decode | split('\n') }}"
       no_log: true
-
-    - name: Initialize creds var
-      ansible.builtin.set_fact:
-        x_ui_creds: {}
 
     - name: Set 3x-ui credentials
       ansible.builtin.set_fact:
-        x_ui_creds: "{{ x_ui_creds | combine({ item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim }) }}"
+        x_ui_creds: "{{ x_ui_creds | default({}) | combine({item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim}) }}"
       loop: "{{ remote_lines }}"
       when:
         - "'=' in item"
         - "item.split('=', 1)[0] | trim in allowed_keys"
       no_log: true
 
-    - name: Combine secrets
+    - name: Combine credentials
       ansible.builtin.set_fact:
         final_secrets: "{{ existing_secrets | combine(x_ui_creds) }}"
       no_log: true
 
-    - name: Append secrets to local .env
+    - name: Append credentials to local .env
       ansible.builtin.copy:
         dest: "{{ local_secrets_file }}"
         mode: "0440"

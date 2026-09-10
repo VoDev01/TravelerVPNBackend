@@ -15,11 +15,6 @@ provisioner:
     group_vars:
       all:
         xui_web_base_path: "test"
-        xui_username: "test"
-        xui_password: "test123"
-        xui_port: "2552"
-        node_port: "443"
-        node_remark: "test-node-0"
 
 ansible:
   cfg:
@@ -40,6 +35,8 @@ ansible:
         - --diff
         - --force-handlers
         - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/../../ansible/inventories/terraform_hosts.yml
+        - --extra-vars
+        - "xui_username=test xui_password=test123"
       ansible_navigator:
         - --mode stdout
         - --pull-policy missing

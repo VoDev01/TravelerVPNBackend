@@ -5,8 +5,9 @@
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
-    xui_username: "{{ lookup('ansible.builtin.ini', 'XUI_USERNAME type=properties file=' ~ local_secrets_file) }}"
-    xui_password: "{{ lookup('ansible.builtin.ini', 'XUI_PASSWORD type=properties file=' ~ local_secrets_file) }}"
+    local_env_file: "{{ local_project_root }}/.env"
+    xui_username: "{{ lookup('ansible.builtin.ini', 'XUI_USERNAME type=properties file=' ~ local_env_file) }}"
+    xui_password: "{{ lookup('ansible.builtin.ini', 'XUI_PASSWORD type=properties file=' ~ local_env_file) }}"
 
   tasks:
     - name: Execute terraform
@@ -49,9 +50,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PANEL_PORT: "{{ node_port }}"
-        XUI_USERNAME: "{{ xui_username }}"
-        XUI_PASSWORD: "{{ xui_password }}"
+        XUI_PANEL_PORT: "{{ inbound_port }}"
         XUI_SSL_MODE: "none"
       changed_when: true
 
@@ -78,28 +77,27 @@
     - name: Read .env file
       ansible.builtin.slurp:
         src: /etc/x-ui/install-result.env
-      register: remote_file
+      register: remote_env
+      no_log: true
 
     - name: Add data to node_credentials
       ansible.builtin.set_fact:
-        node_credentials: "{{ parsed_env | from_yaml | combine({ 'NODE_INBOUND_PORT': inbound_port, 'NODE_ADDRESS': ansible_host }) }}"
+        node_credentials: "{{ json_raw | from_yaml }}"
       vars:
-        lines: "{{ (remote_file['content'] | b64decode) | replace('\r\n', '\n') | split('\n') }}"
-
-        valid_lines: >-
-          {% set res = [] %}
-          {% for line in lines %}
+        json_raw: >-
+          {% set ns = namespace(res={}) %}
+          {% for line in (remote_env.content | b64decode).splitlines() %}
             {% set trimmed = line | trim %}
-            {% if trimmed and '=' in trimmed and not trimmed.startswith('#') %}
-              {% set _ = res.append(trimmed) %}
+            {% if trimmed and not trimmed.startswith('#') and '=' in trimmed %}
+              {% set parts = trimmed.split('=', 1) %}
+              {% set ns.res = ns.res | combine({parts[0] | trim: parts[1] | trim}) %}
             {% endif %}
           {% endfor %}
-          {{ res }}
-
-        parsed_env: >-
-          {% set d = {} %}
-          {% for line in valid_lines %}
-            {% set parts = line.split('=', 1) %}
-            {% set _ = d.update({ parts[0] | trim : parts[1] | trim }) %}
-          {% endfor %}
-          {{ d }}
+          {{-
+            ns.res
+            | combine({
+              'NODE_ADDRESS': ansible_host,
+              'NODE_LOCATION': location
+            })
+            | to_json -}}
+      no_log: true

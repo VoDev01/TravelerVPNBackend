@@ -24,13 +24,10 @@
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
     remote_project_root: "/opt/travelervpn"
-    is_container: >
-      {{ ansible_facts['virtualization_type'] | default('') in ['docker', 'containerd']
-      or lookup('ansible.builtin.file', '/.dockerenv', errors='ignore') != '' }}
 
   tasks:
     - name: Full docker install
-      when: not is_container
+      when: molecule_ephemeral_directory is not defined
       block:
         - name: Install Docker Script
           ansible.builtin.get_url:
@@ -49,7 +46,7 @@
             enabled: true
 
     - name: Install docker cli
-      when: is_container
+      when: molecule_ephemeral_directory is defined
       block:
         - name: Create keyrings directory
           ansible.builtin.file:

@@ -1,20 +1,32 @@
-variable "location" {
+variable "node_location" {
   type = string
   default = "am2"
 }
 
-variable "node_port" {
-  type = number
-  validation {
-    condition = var.node_port != null
-    error_message = "Port cant be empty."
-  }
+variable "spring_backend_location" {
+  type = string
+  default = "am2"
 }
 
-variable "node_ssh_port" {
+variable "panel_location" {
+  type = string
+  default = "am2"
+}
+
+variable "node_count" {
   type = number
-  validation {
-    condition = var.node_ssh_port != null
-    error_message = "SSH port cant be empty."
-  }
+  description = "Node count."
+  default = 1
+}
+
+variable "enable_backend" {
+  type = bool
+  description = "Create backend."
+  default = true
+}
+
+variable "enable_panel" {
+  type = bool
+  description = "Create 3x-ui panel."
+  default = true
 }

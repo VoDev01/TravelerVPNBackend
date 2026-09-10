@@ -1,40 +1,17 @@
-resource "serverspace_server" "vless_node" {
-  name = "node-${var.location}"
-  image = "Ubuntu-22.04-X64"
-  ram = 1024
-  cpu = 1
-  boot_volume_size = 25 * 1024
-  location = var.location
+module "nodes" {
+  source = "./modules/nodes"
+  count = var.node_count
+  location = var.node_location
+}
 
-  volume {
-    name = "vol1"
-    size = 25 * 1024
-  }
+module "panel" {
+  source = "./modules/panel"
+  count = var.enable_panel ? 1 : 0
+  location = var.panel_location
+}
 
-  nic {
-    network = ""
-    network_type = "PublicShared"
-    bandwidth = 50
-  }
-
-  ssh_keys = [
-    resource.serverspace_ssh.node_key.id
-  ]
-
-  connection {
-    host        = self.public_ip_addresses[0]
-    user        = "root"
-    type        = "ssh"
-    private_key = file("./vless_node.pem")
-    timeout     = "1m"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "export PATH=$PATH:/usr/bin",
-      "sudo ufw allow ${var.node_ssh_port},${var.node_port},80",
-      "sudo ufw allow out 80,443",
-      "sudo ufw enable"
-    ]
-  }  
+module "spring_backend" {
+  source = "./modules/spring_backend"
+  count = var.enable_backend ? 1 : 0
+  location = var.panel_location
 }

@@ -1,5 +1,23 @@
-resource "serverspace_server" "vless_node" {
-  name = "node-${var.location}"
+terraform {
+  required_providers {
+    serverspace = {
+      source = "itglobalcom/serverspace"
+      version = "~> 0.3.2"
+    }
+    random = {
+      source = "hashicorp/random"
+      version = ">= 3.9.0"
+    }
+  }
+}
+
+resource "random_integer" "ssh_port" {
+  min = 1000
+  max = 65535
+}
+
+resource "serverspace_server" "spring_backend" {
+  name = "spring-backend-${var.location}"
   image = "Ubuntu-22.04-X64"
   ram = 1024
   cpu = 1
@@ -25,16 +43,16 @@ resource "serverspace_server" "vless_node" {
     host        = self.public_ip_addresses[0]
     user        = "root"
     type        = "ssh"
-    private_key = file("./vless_node.pem")
+    private_key = file("./vpn_vodev_ssh.pem")
     timeout     = "1m"
   }
 
   provisioner "remote-exec" {
     inline = [
       "export PATH=$PATH:/usr/bin",
-      "sudo ufw allow ${var.node_ssh_port},${var.node_port},80",
+      "sudo ufw allow ${random_integer.ssh_port.result},443,80",
       "sudo ufw allow out 80,443",
       "sudo ufw enable"
     ]
-  }  
+  }
 }
