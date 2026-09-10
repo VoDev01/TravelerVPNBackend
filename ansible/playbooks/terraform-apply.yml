@@ -1,0 +1,20 @@
+---
+- name: Provision infrastructure with Terraform
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    local_project_root: "{{ playbook_dir }}/../.."
+
+  tasks:
+    - name: Execute terraform
+      community.general.terraform:
+        project_path: "{{ local_project_root }}/terraform/"
+        state: present
+        variables:
+          serverspace_token: "{{ serverspace_token }}"
+      register: vless_node
+      when: molecule_ephemeral_directory is not defined
+
+- name: Provision users
+  ansible.builtin.import_playbook: "user-provisioner.yml"

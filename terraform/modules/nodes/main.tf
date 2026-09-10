@@ -11,6 +11,11 @@ terraform {
   }
 }
 
+resource "serverspace_ssh" "node_key" {
+  name = "terraform-key"
+  public_key = file("~/.ssh/vpn_vodev_ssh.pub")
+}
+
 resource "random_integer" "ssh_port" {
   min = 64000
   max = 65535
@@ -48,16 +53,7 @@ resource "serverspace_server" "vless_node" {
     host        = self.public_ip_addresses[0]
     user        = "root"
     type        = "ssh"
-    private_key = file("./vpn_vodev_ssh.pem")
+    private_key = file("~/.ssh/vpn_vodev_ssh.pem")
     timeout     = "1m"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "export PATH=$PATH:/usr/bin",
-      "sudo ufw allow ${random_integer.ssh_port.result},${random_integer.inbound_port.result},80",
-      "sudo ufw allow out 80,443",
-      "sudo ufw enable"
-    ]
   }
 }

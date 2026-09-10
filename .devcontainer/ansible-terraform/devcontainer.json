@@ -20,6 +20,11 @@
 			"source": "${localWorkspaceFolder}/.terraformrc",
 			"target": "/root/.terraformrc",
 			"type": "bind"
+		},
+		{
+			"source": "${localEnv:USERPROFILE}/.ssh",
+			"target": "/root/.ssh",
+			"type": "bind"
 		}
 	],
 	"workspaceFolder": "/opt/${localWorkspaceFolderBasename}",

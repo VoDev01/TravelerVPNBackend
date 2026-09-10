@@ -1,20 +1,4 @@
 ---
-- name: Deploy server with terraform
-  hosts: localhost
-  gather_facts: false
-
-  tasks:
-    - name: Execute terraform
-      community.general.terraform:
-        project_path: "{{ local_project_root }}/terraform/"
-        state: present
-        variables:
-          node_port: "{{ 65535 | random(start=1024) }}"
-          ssh_port: "{{ 65535 | random(start=1024) }}"
-          serverspace_token: "{{ serverspace_token }}"
-      register: vless_node
-      when: molecule_ephemeral_directory is not defined
-
 - name: Deploy Spring Backend
   hosts: spring_backends
   remote_user: root

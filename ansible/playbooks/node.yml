@@ -1,26 +1,4 @@
 ---
-- name: Deploy server with terraform
-  hosts: localhost
-  gather_facts: false
-
-  vars:
-    local_project_root: "{{ playbook_dir }}/../.."
-    local_env_file: "{{ local_project_root }}/.env"
-    xui_username: "{{ lookup('ansible.builtin.ini', 'XUI_USERNAME type=properties file=' ~ local_env_file) }}"
-    xui_password: "{{ lookup('ansible.builtin.ini', 'XUI_PASSWORD type=properties file=' ~ local_env_file) }}"
-
-  tasks:
-    - name: Execute terraform
-      community.general.terraform:
-        project_path: "{{ local_project_root }}/terraform/"
-        state: present
-        variables:
-          node_port: "{{ 65535 | random(start=1024) }}"
-          ssh_port: "{{ 65535 | random(start=1024) }}"
-          serverspace_token: "{{ serverspace_token }}"
-      register: vless_node
-      when: molecule_ephemeral_directory is not defined
-
 - name: Install 3x-ui Node and TLS certificate
   hosts: nodes
   remote_user: root

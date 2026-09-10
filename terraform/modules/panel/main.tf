@@ -21,6 +21,11 @@ resource "random_integer" "panel_port" {
   max = 64399
 }
 
+resource "serverspace_ssh" "panel_key" {
+  name = "terraform-key"
+  public_key = file("~/.ssh/vpn_vodev_ssh.pub")
+}
+
 resource "serverspace_server" "panel" {
   name = "panel-${var.location}"
   image = "Ubuntu-22.04-X64"
@@ -41,23 +46,14 @@ resource "serverspace_server" "panel" {
   }
 
   ssh_keys = [
-    resource.serverspace_ssh.node_key.id
+    resource.serverspace_ssh.panel_key.id
   ]
 
   connection {
     host        = self.public_ip_addresses[0]
     user        = "root"
     type        = "ssh"
-    private_key = file("./vpn_vodev_ssh.pem")
+    private_key = file("~/.ssh/vpn_vodev_ssh.pem")
     timeout     = "1m"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "export PATH=$PATH:/usr/bin",
-      "sudo ufw allow ${random_integer.ssh_port.result},${random_integer.panel_port.result},80",
-      "sudo ufw allow out 80,443",
-      "sudo ufw enable"
-    ]
   }
 }
