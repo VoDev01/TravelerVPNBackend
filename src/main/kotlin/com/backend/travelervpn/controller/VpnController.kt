@@ -12,6 +12,7 @@ import com.backend.travelervpn.service.xui.XUIManagerService
 import com.backend.travelervpn.service.xui.XuiWebSocketData
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
+import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,6 @@ import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.web.bind.annotation.*
 import tools.jackson.databind.ObjectMapper
-import java.security.CryptoPrimitive
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.*
@@ -212,19 +212,20 @@ class VpnController(
     }
 
     @PostMapping(path = ["/user/geo"])
-    suspend fun getUserLastGeo(email: String): VpnResponse {
+    suspend fun getUserGeo(
+        @RequestHeader("X-Forwarded-For") forwardedFor: String?,
+        request: HttpServletRequest
+    ): VpnResponse {
         return try {
-            val response = xuiManagerService.getClientIps(email)
+            val clientIp = forwardedFor?.split(",")?.firstOrNull()?.trim()
+                ?: request.remoteAddr
 
-            if(response.isNullOrEmpty()) VpnResponse(status = "error", message = "Client doesnt have any ip logs")
-            else {
-                val geo = geoIpService.lookupIp(response.last())
+            val geo = geoIpService.lookupIp(clientIp)
 
-                if(geo === null) {
-                    VpnResponse(status = "error", message = "Ip not found")
-                } else {
-                    VpnResponse(status = "success", response = geo)
-                }
+            if (geo === null) {
+                VpnResponse(status = "error", message = "Ip not found")
+            } else {
+                VpnResponse(status = "success", response = geo)
             }
         } catch (ex: Exception) {
             log.error(ex.message, ex)

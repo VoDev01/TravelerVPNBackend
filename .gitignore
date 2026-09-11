@@ -41,6 +41,7 @@ out/
 
 .terraformrc
 .env
+.env.keys
 .VSCodeCounter
 *.mmdb
 *.pem

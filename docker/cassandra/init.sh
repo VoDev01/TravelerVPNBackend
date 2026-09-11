@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-SECRET_FILE="/run/secrets/app_secrets"
+SECRET_FILE="/run/secrets/cassandra_secrets"
 
 if [ -f "$SECRET_FILE" ]; then
   set -a

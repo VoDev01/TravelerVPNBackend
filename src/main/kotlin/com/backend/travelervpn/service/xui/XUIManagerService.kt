@@ -12,9 +12,10 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import org.apache.hc.core5.http.HttpException
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
 import java.util.*
 
 @Service
@@ -64,7 +65,7 @@ class XUIManagerService(
                 ?: csrfResponse.body().msg) as String?
 
             if (csrfToken.isNullOrBlank()) {
-                throw HttpException("Unable to get csrf token")
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "Unable to get csrf token")
             }
 
             val response = authApi.postLogin(postLoginRequest = PostLoginRequest(
@@ -73,7 +74,10 @@ class XUIManagerService(
                 twoFactorCode = "" //TODO: IMPLEMENT TWO FA
             ))
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             response.body().success
         } catch (e: Exception) {
@@ -107,12 +111,15 @@ class XUIManagerService(
                 ?: csrfResponse.body().msg) as String?
 
             if (csrfToken.isNullOrBlank()) {
-                throw HttpException("Unable to get csrf token")
+                throw ResponseStatusException(HttpStatus.NOT_FOUND,"Unable to get csrf token")
             }
 
             val response = authApi.postLogout()
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             logger.info("Websocket logged out")
             true
@@ -156,7 +163,10 @@ class XUIManagerService(
             clientsApi.setBearerToken(appProperties.xuiToken.trim())
 
             val response = clientsApi.getPanelApiClientsGetEmail(email.plus("@secret.com"))
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -175,7 +185,10 @@ class XUIManagerService(
             clientsApi.setBearerToken(appProperties.xuiToken.trim())
 
             val response = clientsApi.getPanelApiClientsGetTgIdTgId(tgId)
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -228,7 +241,10 @@ class XUIManagerService(
 
             val response = clientsApi.postPanelApiClientsAdd(newClientRequest)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             client
         } catch (e: Exception) {
@@ -263,7 +279,10 @@ class XUIManagerService(
                     totalGB = newClient.totalGB ?: client.totalGB,
                 )
                 val response = clientsApi.postPanelApiClientsUpdateEmail(email.plus("@secret.com"), newClient)
-                if(response.status != 200) throw HttpException(response.body().msg)
+                if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
             }
 
         } catch (e: Exception) {
@@ -279,7 +298,10 @@ class XUIManagerService(
 
             val response = inboundsApi.getPanelApiInboundsList()
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             response.body().obj
         } catch (e: Exception) {
@@ -296,7 +318,10 @@ class XUIManagerService(
 
             val response = inboundsApi.postPanelApiInboundsAdd(request)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -316,7 +341,10 @@ class XUIManagerService(
 
             val response = inboundsApi.postPanelApiInboundsDelId(inboundId)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -338,7 +366,10 @@ class XUIManagerService(
             clientsApi.setBearerToken(appProperties.xuiToken.trim())
 
             val response = clientsApi.postPanelApiClientsEmailAttach(email.plus("@secret.com"), inboundIds)
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
         } catch (e: Exception) {
             logger.error(e.message, e)
@@ -355,7 +386,10 @@ class XUIManagerService(
             clientsApi.setBearerToken(appProperties.xuiToken.trim())
 
             val response = clientsApi.postPanelApiClientsEmailDetach(email.plus("@secret.com"), inboundIds)
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
         } catch (e: Exception) {
             logger.error(e.message, e)
@@ -372,7 +406,10 @@ class XUIManagerService(
 
             val response = clientsApi.postPanelApiClientsIpsEmail(email.plus("@secret.com"))
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -392,7 +429,10 @@ class XUIManagerService(
 
             val response = clientsApi.getPanelApiClientsSubLinksSubId(subId)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -412,7 +452,10 @@ class XUIManagerService(
 
             val response = clientsApi.getPanelApiClientsLinksEmail(email.plus("@secret.com"))
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             if(response.body().obj is Unit || response.body().obj == null)
                 null
@@ -432,7 +475,10 @@ class XUIManagerService(
 
             val response = clientsApi.getPanelApiClientsTrafficEmail(email.plus("@secret.com"))
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             response.body().obj
         } catch (e: Exception) {
@@ -449,7 +495,10 @@ class XUIManagerService(
 
             val response = clientsApi.postPanelApiClientsResetTrafficEmail(email.plus("@secret.com"))
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
         } catch (e: Exception) {
             logger.error(e.message, e)
         }
@@ -463,7 +512,10 @@ class XUIManagerService(
 
             val response = nodesApi.postPanelApiNodesAdd(node)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             response.body().obj
         } catch (e: Exception) {
@@ -480,7 +532,10 @@ class XUIManagerService(
 
             val response = nodesApi.postPanelApiNodesDelId(nodeId)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             response.body().obj
         } catch (e: Exception) {
@@ -497,7 +552,10 @@ class XUIManagerService(
 
             val response = nodesApi.postPanelApiNodesTest(request)
 
-            if(response.status != 200) throw HttpException(response.body().msg)
+            if(response.status != 200) throw ResponseStatusException(
+                HttpStatus.valueOf(response.status),
+                response.body().msg
+            )
 
             response.body().obj
         } catch (e: Exception) {

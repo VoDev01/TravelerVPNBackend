@@ -3,10 +3,8 @@ name: travelervpn-dev
 services:
   cassandra:
     environment:
-      CASSANDRA_PASSWORD_SEEDER: "yes"
       CASSANDRA_USER: "dev"
       CASSANDRA_PASSWORD: "dev"
-      CASSANDRA_AUTHENTICATOR: "PasswordAuthenticator"
     networks:
       - vpn_network
     ports:
@@ -21,7 +19,6 @@ services:
       dockerfile: ./docker/backend/dev/Dockerfile
     environment:
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
-    command: ["./gradlew", "bootRun"]
     develop:
       watch:
         - action: sync+restart
@@ -35,34 +32,6 @@ services:
       - vpn_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  vault:
-    user: root
-    networks:
-      - vpn_network
-    restart: always
-    environment:
-      VAULT_ADDR: "http://127.0.0.1:8200"
-      API_ADDR: "http://127.0.0.1:8200"
-      VAULT_DEV_ROOT_TOKEN_ID: "root"
-      VAULT_ROLE_ID: dev
-      DEV_MODE: true
-    command: [
-      "/bin/sh",
-      "-c",
-      "init.sh & vault server -dev -dev-listen-address=0.0.0.0:8200"
-    ]
-    ports:
-      - "8200:8200"
-
-  vault-agent:
-    user: root
-    environment:
-      VAULT_ADDR: "http://vault:8200"
-      VAULT_ROLE_ID: dev
-    networks:
-      - vpn_network
-    restart: always
 
 networks:
   vpn_network:

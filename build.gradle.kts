@@ -25,6 +25,7 @@ dependencies {
 
     implementation(platform("org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.11.0"))
 
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-cassandra")
     implementation("org.springframework.boot:spring-boot-starter-data-cassandra")
     implementation("org.springframework.boot:spring-boot-starter-data-cassandra-reactive")
@@ -35,7 +36,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-cassandra")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
-    implementation("org.springframework.cloud:spring-cloud-starter-vault-config")
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
@@ -50,6 +50,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.maxmind.geoip2:geoip2:4.2.0")
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
     testImplementation("io.mockk:mockk:1.13.5")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")

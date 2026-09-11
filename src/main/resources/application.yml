@@ -3,27 +3,20 @@ maxmind:
     - "https://git.io/GeoLite2-City.mmdb"
     - "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-City.mmdb"
   dbPath: "./maxmind/GeoLite2-City.mmdb"
-  downloadCron: "0 0 3 * * MON"
+  downloadCron: "0 0 1 * * *"
 
 spring:
-  realityPublicKey: ${realityPublicKey}
-  realityShortId: ${realityShortId}
-  serverIp: ${serverIp}
-  maskDomain: ${maskDomain}
-  marzbanUsername: ${marzbanUsername}
-  marzbanPassword: ${marzbanPassword}
-  xuiToken: ${xuiToken}
-  xuiUsername: ${xuiUsername}
-  xuiPassword: ${xuiPassword}
-  xuiAccessUrl: ${xuiAccessUrl}
-  xuiSubUrl: ${xuiSubUrl}
-
-  config:
-    import: "vault://"
+  marzbanUsername: ${MARZBAN_USERNAME}
+  marzbanPassword: ${MARZBAN_PASSWORD}
+  xuiToken: ${XUI_TOKEN}
+  xuiUsername: ${XUI_USERNAME}
+  xuiPassword: ${XUI_PASSWORD}
+  xuiAccessUrl: ${XUI_ACCESS_URL}
+  xuiSubUrl: ${XUI_SUB_URL}
 
   cassandra:
-    username: ${cassandraUser}
-    password: ${cassandraPassword}
+    username: ${CASSANDRA_USER}
+    password: ${CASSANDRA_PASSWORD}
     schema-action: create_if_not_exists
     keyspace-name: traveler_vpn
     local-datacenter: datacenter1
@@ -31,21 +24,9 @@ spring:
 
   flyway:
     url: jdbc:cassandra://cassandra:9042/traveler_vpn?localdatacenter=datacenter1
-    user: ${cassandraUser}
-    password: ${cassandraPassword}
+    user: ${CASSANDRA_USER}
+    password: ${CASSANDRA_PASSWORD}
     locations: classpath:cassandra/migration
     driver-class-name: com.ing.data.cassandra.jdbc.CassandraDriver
     baseline-on-migrate: true
     group: true
-
-  cloud:
-    vault:
-      uri: http://vault:8200
-      authentication: TOKEN
-      token: ${VAULT_TOKEN}
-      fail-fast: true
-      kv:
-        enabled: true
-        backend: secret
-        default-context: spring
-      application-name: "spring"

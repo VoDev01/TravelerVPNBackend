@@ -2,9 +2,6 @@ services:
   cassandra:
     ports:
       - "127.0.0.1:9042:9042"
-    environment:
-      CASSANDRA_AUTHENTICATOR: PasswordAuthenticator
-      CASSANDRA_PASSWORD_SEEDER: "yes"
     logging:
       driver: "json-file"
       options:
@@ -29,18 +26,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    networks:
-      - vpn_network
-  
-  vault:
-    ports:
-      - "127.0.0.1:8200:8200"
-    user: 100:1000
-    networks:
-      - vpn_network
-
-  vault-agent:
-    user: 100:1000
     networks:
       - vpn_network
 

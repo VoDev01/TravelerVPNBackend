@@ -19,17 +19,21 @@ RUN --mount=type=cache,target=/root/.gradle \
 FROM amazoncorretto:24-headless
 WORKDIR /app
 
-ENV USER_ID=1000
+ENV USER_ID=100
 ENV GROUP_ID=1000
 
-RUN dnf install -y shadow-utils && \
+RUN dnf update -y && \
+    dnf install -y shadow-utils tar gzip  && \
+    dnf clean all
+
+RUN curl -sfS https://dotenvx.sh | sh && \
     groupadd -g ${GROUP_ID} spring && \
     useradd -r -u ${USER_ID} -g spring -m -s /bin/bash spring && \
-    dnf clean all && \
     chown -R spring:spring /app
 
 USER spring:spring
 
 COPY --from=builder /app/build/libs/*-SNAPSHOT.jar ./app.jar
+COPY .env .env
 
-CMD ["java", "-XX:+UseG1GC", "-Xmx512m", "-jar", "app.jar"]
+CMD ["dotenvx", "run", "--", "java", "-XX:+UseG1GC", "-Xmx512m", "-jar", "app.jar"]
