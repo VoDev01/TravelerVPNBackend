@@ -1,14 +1,14 @@
 ---
-- name: Allow SSH
+- name: Allow SSH port
   community.general.ufw:
     rule: allow
-    port: "{{ hostvars[groups[item]].ssh_port }}"
+    port: "{{ hostvars[inventory_hostname].ansible_port }}"
     proto: tcp
 
 - name: Allow public access port
   community.general.ufw:
     rule: allow
-    port: "{{ hostvars[groups[item]].access_port }}"
+    port: "{{ hostvars[inventory_hostname].access_port }}"
     proto: any
 
 - name: Allow outgoing 443

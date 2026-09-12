@@ -30,6 +30,28 @@
         name: pexpect
         state: present
 
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Check if dotenvx is already installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/dotenvx.sh
+      register: dotenvx_binary
+
+    - name: Download dotenvx script
+      ansible.builtin.get_url:
+        url: https://dotenvx.sh
+        dest: /usr/local/bin/dotenvx.sh
+        mode: "0755"
+      when: not dotenvx_binary.stat.exists
+
+    - name: Install dotenvx
+      ansible.builtin.command: dotenvx.sh
+      changed_when: true
+
     - name: Check if 3x-ui is already installed
       ansible.builtin.stat:
         path: /usr/bin/install_3x_ui.sh
@@ -47,7 +69,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PANEL_PORT: "{{ panel_port }}"
+        XUI_PANEL_PORT: "{{ access_port }}"
         XUI_USERNAME: "{{ xui_username }}"
         XUI_PASSWORD: "{{ xui_password }}"
         XUI_SSL_MODE: "none"
@@ -59,7 +81,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PANEL_PORT: "{{ panel_port }}"
+        XUI_PANEL_PORT: "{{ access_port }}"
         XUI_USERNAME: "{{ xui_username }}"
         XUI_PASSWORD: "{{ xui_password }}"
         XUI_WEB_BASE_PATH: "{{ xui_web_base_path }}"
@@ -78,13 +100,17 @@
         command: x-ui
         timeout: 60
         responses:
-          (?i)selection.*0-28: "20"
-          (?i)choose an option: "6"
-          (?i)proceed: "y"
-          (?i)correct incoming public: "y"
-          (?i)ipv6: ""
-          (?i)port: "80"
+          "selection": "20\n"
+          "Choose an option": "6\n"
+          "proceed": "y\n"
+          "IPv4": "y\n"
+          "IPv6": "\n"
+          "port": "80\n"
+          "an option": "0\n"
         echo: true
+      environment:
+        NO_COLOR: "1"
+      when: molecule_ephemeral_directory is not defined
 
     - name: Check if .env exist
       ansible.builtin.stat:
@@ -92,55 +118,33 @@
       register: file_stat
       delegate_to: localhost
 
-    - name: Read existing .env content
-      ansible.builtin.slurp:
-        src: "{{ local_secrets_file }}"
-      when: file_stat.stat.exists and file_stat.stat.size > 0
-      register: existing_secrets_encoded
-      delegate_to: localhost
-      no_log: true
-
-    - name: If file doesn't exist or empty - create empty object
-      ansible.builtin.set_fact:
-        existing_secrets: "{{ existing_secrets | default({}) | combine({item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim}) }}"
-      loop: "{{ (existing_secrets_encoded['content'] | b64decode | split('\n')) }}"
-      when:
-        - "existing_secrets_encoded.skipped is not defined"
-        - "'=' in item"
-      no_log: true
-
     - name: Read remote 3x-ui credentials
       ansible.builtin.slurp:
         src: /etc/x-ui/install-result.env
       register: remote_env
       no_log: true
 
-    - name: Split up credentials
+    - name: Split up credentials into lines
       ansible.builtin.set_fact:
         remote_lines: "{{ remote_env['content'] | b64decode | split('\n') }}"
       no_log: true
 
-    - name: Set 3x-ui credentials
+    - name: Parse remote 3x-ui credentials into dictionary
       ansible.builtin.set_fact:
-        x_ui_creds: "{{ x_ui_creds | default({}) | combine({item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim}) }}"
+        x_ui_creds: "{{ x_ui_creds | default({}) | combine({(item.split('=', 1)[0] | trim): (item.split('=', 1)[1] | trim)}) }}"
       loop: "{{ remote_lines }}"
       when:
         - "'=' in item"
         - "item.split('=', 1)[0] | trim in allowed_keys"
+        - "item | trim != ''"
       no_log: true
 
-    - name: Combine credentials
-      ansible.builtin.set_fact:
-        final_secrets: "{{ existing_secrets | combine(x_ui_creds) }}"
-      no_log: true
-
-    - name: Append credentials to local .env
-      ansible.builtin.copy:
-        dest: "{{ local_secrets_file }}"
-        mode: "0440"
-        content: |
-          {% for key, value in final_secrets.items() %}
-          {{ key }}={{ value }}
-          {% endfor %}
+    - name: Update or insert 3x-ui secrets in local .env using dotenvx
+      ansible.builtin.command:
+        cmd: 'dotenvx set {{ item.key }} "{{ item.value }}" -f {{ local_secrets_file }}'
+      loop: "{{ x_ui_creds | dict2items }}"
+      environment:
+        DOTENV_PRIVATE_KEY: "{{ lookup('env', 'DOTENV_PRIVATE_KEY') }}"
       delegate_to: localhost
+      changed_when: true
       no_log: true

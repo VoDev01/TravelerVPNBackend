@@ -1,7 +1,7 @@
 ---
 - name: Install 3x-ui Node and TLS certificate
   hosts: nodes
-  remote_user: root
+  remote_user: deployer
   gather_facts: false
   become: true
 
@@ -10,6 +10,28 @@
       ansible.builtin.pip:
         name: pexpect
         state: present
+
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Check if dotenvx is already installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/dotenvx.sh
+      register: dotenvx_binary
+
+    - name: Download dotenvx script
+      ansible.builtin.get_url:
+        url: https://dotenvx.sh
+        dest: /usr/local/bin/dotenvx.sh
+        mode: "0755"
+      when: not dotenvx_binary.stat.exists
+
+    - name: Install dotenvx
+      ansible.builtin.command: dotenvx.sh
+      changed_when: true
 
     - name: Check if 3x-ui is already installed
       ansible.builtin.stat:
@@ -28,7 +50,7 @@
       environment:
         DEBIAN_FRONTEND: noninteractive
         XUI_NONINTERACTIVE: "1"
-        XUI_PANEL_PORT: "{{ inbound_port }}"
+        XUI_PANEL_PORT: "{{ access_port }}"
         XUI_SSL_MODE: "none"
       changed_when: true
 
@@ -44,13 +66,17 @@
         command: x-ui
         timeout: 60
         responses:
-          (?i)selection.*0-28: "20"
-          (?i)choose an option: "6"
-          (?i)proceed: "y"
-          (?i)correct incoming public: "y"
-          (?i)ipv6: ""
-          (?i)port: "80"
+          "selection": "20\n"
+          "Choose an option": "6\n"
+          "proceed": "y\n"
+          "correct incoming public": "y\n"
+          "IPv6": "\n"
+          "port": "80\n"
+          "an option": "0\n"
         echo: true
+      environment:
+        NO_COLOR: "1"
+      when: molecule_ephemeral_directory is not defined
 
     - name: Read .env file
       ansible.builtin.slurp:

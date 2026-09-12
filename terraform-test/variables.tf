@@ -1,7 +1,7 @@
-variable "enable_node" {
-  type = bool
-  description = "Create 3x-ui node."
-  default = true
+variable "node_count" {
+  type = number
+  description = "3x-ui nodes count."
+  default = 3
 }
 
 variable "enable_backend" {

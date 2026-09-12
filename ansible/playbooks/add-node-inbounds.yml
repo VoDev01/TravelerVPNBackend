@@ -1,20 +1,42 @@
 ---
-- name: Add new inbound connections from nodes inventory to master panel
+- name: Get 3x-ui panel url and api token
   hosts: spring_backends
   gather_facts: false
-  connection: http
+  remote_user: deployer
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
-    local_env_file: "{{ local_project_root }}/.env"
 
-    xui_url: >-
-      {%- if molecule_ephemeral_directory is defined -%}
-        http://3x-ui-0:2552/test
-      {%- else -%}
-        {{ lookup('ansible.builtin.ini', 'XUI_ACCESS_URL type=properties file=' ~ local_env_file) }}
-      {%- endif -%}
-    xui_api_token: "{{ lookup('ansible.builtin.ini', 'XUI_API_TOKEN type=properties file=' ~ local_env_file) }}"
+  tasks:
+    - name: Get 3x-ui panel url
+      ansible.builtin.command:
+        cmd: "dotenvx get XUI_ACCESS_URL"
+        chdir: "{{ local_project_root }}"
+      changed_when: true
+      delegate_to: localhost
+      register: dotenvx_xui_url
+
+    - name: Set xui_url
+      ansible.builtin.set_fact:
+        xui_url: "{{ dotenvx_xui_url.stdout if molecule_ephemeral_directory is not defined else 'http://3x-ui-0:2552/test' }}"
+
+    - name: Get api token
+      ansible.builtin.command:
+        cmd: "dotenvx get XUI_API_TOKEN"
+        chdir: "{{ local_project_root }}"
+      changed_when: true
+      delegate_to: localhost
+      register: dotenvx_xui_api_token
+
+    - name: Set xui_api_token
+      ansible.builtin.set_fact:
+        xui_api_token: "{{ dotenvx_xui_api_token.stdout }}"
+
+- name: Add new inbound connections from nodes inventory to master panel
+  hosts: spring_backends
+  remote_user: deployer
+  gather_facts: false
+  connection: http
 
   tasks:
     - name: Test connection to 3x-ui

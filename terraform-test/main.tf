@@ -5,8 +5,8 @@ resource "docker_network" "molecule_network" {
 
 module "nodes" {
     source = "./modules/nodes"
-    count = var.enable_node ? 1 : 0
     network_id = docker_network.molecule_network.id
+    node_count = 3
 }
 
 module "panel" {

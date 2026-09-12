@@ -1,0 +1,36 @@
+---
+- name: Add maintainer user
+  hosts: all
+  gather_facts: false
+  remote_user: deployer
+
+  vars_prompt:
+    - name: maintainer_username
+      prompt: "Username of maintainer"
+      default: "maintainer"
+
+    - name: maintainer_email
+      prompt: "Email of maintainer. Default is maintainer@gmail.com"
+      default: "maintainer@gmail.com"
+
+  tasks:
+    - name: Create maintainer user
+      ansible.builtin.user:
+        name: "{{ maintainer_username }}"
+        shell: /bin/bash
+        state: present
+        generate_ssh_key: true
+        ssh_key_type: ed25519
+        ssh_key_comment: "{{ maintainer_email }}"
+        ssh_key_file: ".ssh/{{ maintainer_username }}"
+        groups: 1000
+        append: true
+
+    - name: Get user ssh public key
+      when: molecule_ephemeral_directory is not defined
+      block:
+        - name: Copy public key to local machine
+          ansible.builtin.fetch:
+            src: "/home/{{ maintainer_username }}/.ssh/id_ed25519.pub"
+            dest: ~/.ssh/
+            flat: true

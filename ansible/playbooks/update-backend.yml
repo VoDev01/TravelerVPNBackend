@@ -1,0 +1,70 @@
+---
+- name: Update Spring Backend
+  hosts: spring_backends
+  gather_facts: false
+  remote_user: deployer
+  become: true
+
+  serial: 1
+
+  vars:
+    remote_project_root: "/opt/travelervpn"
+
+  pre_tasks:
+    - name: Stop the running application
+      community.docker.docker_compose_v2:
+        project_src: "{{ remote_project_root }}"
+        state: absent
+
+  tasks:
+    - name: Copy docker directory
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/docker/"
+        dest: "{{ remote_project_root }}/docker"
+        mode: "0740"
+        directory_mode: "0750"
+        owner: 100
+        group: 1000
+
+    - name: Copy .env
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/.env"
+        dest: "{{ remote_project_root }}"
+        mode: "440"
+        owner: 100
+        group: 1000
+      no_log: true
+
+    - name: Copy main compose
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/compose.yaml"
+        dest: "{{ remote_project_root }}"
+        mode: "440"
+        owner: 100
+        group: 1000
+      no_log: true
+
+    - name: Copy prod compose
+      ansible.builtin.copy:
+        src: "{{ local_project_root }}/compose.prod.yaml"
+        dest: "{{ remote_project_root }}"
+        mode: "440"
+        owner: 100
+        group: 1000
+      no_log: true
+
+  post_tasks:
+    - name: Start the updated application
+      community.docker.docker_compose_v2:
+        project_src: "{{ remote_project_root }}"
+        state: present
+        build: always
+
+    - name: Wait for Spring Boot to be healthy
+      ansible.builtin.uri:
+        url: "http://localhost:8080/actuator/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 12
+      delay: 5

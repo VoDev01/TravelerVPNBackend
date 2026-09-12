@@ -3,18 +3,29 @@
     "nodes":
       "hosts":
         "3x-node-0":
+          "access_port": 33676
           "ansible_connection": "docker"
           "ansible_host": "3x-node-0"
-          "inbound_port": 443
+          "location": "am2"
+        "3x-node-1":
+          "access_port": 44142
+          "ansible_connection": "docker"
+          "ansible_host": "3x-node-1"
+          "location": "am2"
+        "3x-node-2":
+          "access_port": 40817
+          "ansible_connection": "docker"
+          "ansible_host": "3x-node-2"
           "location": "am2"
     "panels":
       "hosts":
         "3x-ui-0":
+          "access_port": 2552
           "ansible_connection": "docker"
           "ansible_host": "3x-ui-0"
-          "panel_port": 2552
     "spring_backends":
       "hosts":
         "spring-backend-0":
+          "access_port": 443
           "ansible_connection": "docker"
           "ansible_host": "spring-backend-0"

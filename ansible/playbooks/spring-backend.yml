@@ -1,7 +1,7 @@
 ---
 - name: Deploy Spring Backend
   hosts: spring_backends
-  remote_user: root
+  remote_user: deployer
   gather_facts: true
   become: true
 
@@ -57,6 +57,28 @@
             state: present
             update_cache: true
 
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Check if dotenvx is already installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/dotenvx.sh
+      register: dotenvx_binary
+
+    - name: Download dotenvx script
+      ansible.builtin.get_url:
+        url: https://dotenvx.sh
+        dest: /usr/local/bin/dotenvx.sh
+        mode: "0755"
+      when: not dotenvx_binary.stat.exists
+
+    - name: Install dotenvx
+      ansible.builtin.command: dotenvx.sh
+      changed_when: true
+
     - name: Create project directory
       ansible.builtin.file:
         path: "{{ remote_project_root }}"
@@ -102,9 +124,7 @@
       no_log: true
 
     - name: Deploy docker-compose project
-      community.docker.docker_compose_v2:
-        project_src: "{{ remote_project_root }}"
-        files:
-          - compose.yaml
-          - compose.prod.yaml
-        state: present
+      ansible.builtin.command:
+        chdir: "{{ remote_project_root }}"
+        cmd: "dotenvx run -- docker compose -f compose.yaml -f compose.prod.yaml up -d"
+      changed_when: true

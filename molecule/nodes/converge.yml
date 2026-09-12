@@ -1,8 +1,8 @@
 ---
 # Purpose: bring the instance to the desired state by running the role under test.
 # Molecule calls this playbook with `molecule converge`.
-- name: Converge Terraform
-  ansible.builtin.import_playbook: "../../ansible/playbooks/terraform-apply.yml"
+- name: Converge SSH and UFW Provisioning
+  ansible.builtin.import_playbook: "../../ansible/playbooks/ssh-ufw-provisioning.yml"
 - name: Converge Master Panel
   ansible.builtin.import_playbook: "../../ansible/playbooks/master-panel.yml"
 - name: Converge Spring Backend

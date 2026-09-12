@@ -2,9 +2,12 @@
 - name: Update 3x-ui panel and nodes
   hosts: panels,nodes
   gather_facts: false
-  remote_user: root
+  remote_user: deployer
+  become: true
 
-  tasks:
+  serial: 3
+
+  pre_tasks:
     - name: Check if 3x-ui is already installed
       ansible.builtin.stat:
         path: /usr/bin/install_3x_ui.sh
@@ -17,6 +20,7 @@
         mode: "0755"
       when: not x_ui_binary.stat.exists
 
+  tasks:
     - name: Update 3x-ui
       ansible.builtin.command: install_3x_ui.sh
       environment:
@@ -24,6 +28,7 @@
         XUI_NONINTERACTIVE: "1"
       changed_when: true
 
+  post_tasks:
     - name: Ensure 3x-ui service is running
       ansible.builtin.systemd:
         name: x-ui

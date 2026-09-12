@@ -34,7 +34,7 @@ ansible:
       ansible_playbook:
         - --diff
         - --force-handlers
-        - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/../../ansible/inventories/terraform_hosts.yml
+        - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/../../ansible/inventories/staging/terraform_hosts.yml
         - --extra-vars
         - "xui_username=test xui_password=test123"
       ansible_navigator:

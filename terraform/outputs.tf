@@ -47,5 +47,5 @@ resource "local_file" "ansible_inventory" {
       }
     }
   })
-  filename = "${path.module}/../ansible/inventories/terraform_hosts.yml"
+  filename = "${path.module}/../ansible/inventories/production/terraform_hosts.yml"
 }

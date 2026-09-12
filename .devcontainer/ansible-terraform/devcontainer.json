@@ -22,18 +22,27 @@
 			"type": "bind"
 		},
 		{
-			"source": "${localEnv:USERPROFILE}/.ssh",
+			"source": "${localEnv:HOME}${localEnv:USERPROFILE}/.ssh",
 			"target": "/root/.ssh",
+			"type": "bind"
+		},
+		{
+			"source": "${localWorkspaceFolder}/.devcontainer/ansible-terraform/ssh-init.sh",
+			"target": "/usr/local/bin/ssh-init.sh",
 			"type": "bind"
 		}
 	],
+	"remoteEnv": {
+		"DOTENV_PRIVATE_KEY": "${localEnv:DOTENV_PRIVATE_KEY}"
+	},
 	"workspaceFolder": "/opt/${localWorkspaceFolderBasename}",
 	"workspaceMount": "source=${localWorkspaceFolder},target=/opt/${localWorkspaceFolderBasename},type=bind",
 	"privileged": true,
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:latest": {
 			"dockerDashComposeVersion": "v2"
-		}
+		},
+		"ghcr.io/devcontainers/features/sshd:1": {}
 	},
 	"customizations": {
 		"vscode": {
@@ -71,7 +80,10 @@
 	"postCreateCommand": {
 		"community modules": "ansible-galaxy collection install community.general community.docker ansible.posix",
 		"molecule": "pip install \"molecule\" \"molecule-plugins[docker]\"",
-		"chown": "chown -R 100:1000 /opt/${localWorkspaceFolderBasename}"
+		"dotenvx": "curl -sfS https://dotenvx.sh | sh",
+		"vim": "apt-get update && apt-get install -y vim",
+		"chown": "chown -R 100:1000 /opt/${localWorkspaceFolderBasename}",
+		"ssh": "ssh-init.sh"
 	},
 	"forwardPorts": [2552]
 }

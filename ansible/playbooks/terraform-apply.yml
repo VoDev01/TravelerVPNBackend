@@ -2,6 +2,7 @@
 - name: Provision infrastructure with Terraform
   hosts: localhost
   gather_facts: false
+  remote_user: root
 
   vars:
     local_project_root: "{{ playbook_dir }}/../.."
